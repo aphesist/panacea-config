@@ -64,6 +64,14 @@ else
     echo "  skipped: open Zen once to create its profile, then re-run"
 fi
 
+say "Claude desktop: Panacea look (custom theme mod)"
+if command -v claude >/dev/null; then
+    claude plugin marketplace add "$HERE/claude-desktop" >/dev/null 2>&1 || true
+    claude plugin install panacea-look@panacea --scope user >/dev/null 2>&1 && echo "  installed - open a new Code session in the desktop app" || echo "  could not install (claude plugin install panacea-look@panacea)"
+else
+    echo "  skipped: Claude Code not installed yet"
+fi
+
 say "settings.json overrides (PrtSc screenshot, dictation on Right Ctrl, lid binds, softer motion)"
 S="$CFG/panacea/settings.json"
 mkdir -p "$BK"; cp -a "$S" "$BK/settings.json"

@@ -67,6 +67,7 @@ Claude subscription.
 | **Spotify** | A Spicetify theme in Panacea's *Nothing* palette: pure black, white, one red; JetBrains Mono; rounded flat panels | `spicetify/Themes/Panacea` |
 | | Runs natively on Wayland, so it follows the display scale (under XWayland with `force_zero_scaling` it was drawn at 1×, tiny); Vesktop (Discord) too | `spotify/spotify-flags.conf`, `electron/vesktop-flags.conf` |
 | **Claude desktop** | Uses GNOME Keyring for its sign-in (Electron doesn't recognise Hyprland and fell back to "no keyring", so you had to sign in every launch) | `electron/claude-desktop-flags.conf` |
+| | **Panacea look** for Claude desktop: pure black, white text, the red accent, and a faint drifting dot-matrix behind the conversation. It's an official custom theme, built as a Claude Code mod | `claude-desktop/panacea-look` |
 | **Zen Browser** | Web-content corners at 16 px instead of ~5, matching Hyprland's window rounding (`--zen-webview-border-radius`) | `zen/userChrome.css` |
 | **Discord** | Vesktop made tiling-friendly: no minimum window size (Discord's 940 px didn't fit a half tile and got cut off), and none of Discord's own window buttons (close with Super+Q, like everything else) | `electron/vesktop-quickCss.css`, `install.sh` |
 | **Display** | Internal 2880×1800 OLED at 120 Hz, scale 1.6. Change it for your panel | `monitors.lua` |
