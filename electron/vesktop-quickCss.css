@@ -1,3 +1,8 @@
 /* Tiling WM: Hyprland manages the window (close with the compositor's
    close-window shortcut), so hide Discord's own window buttons entirely. */
 [class*="winButton"] { display: none !important; }
+
+/* Without the buttons the help icon sat against the rounded corner: give the
+   right end of the title bar the same breathing room as the left. */
+[class*="bar_"] > [class*="trailing_"],
+[class*="titleBar"] > [class*="trailing"] { padding-right: 14px !important; }
