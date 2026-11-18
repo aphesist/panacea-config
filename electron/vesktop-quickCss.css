@@ -1,25 +1,3 @@
-/* Tiling WM: Hyprland manages the window, so keep only Discord's close button. */
-[class*="winButtonMinMax"],
-[class*="winButton"][aria-label="Minimize"],
-[class*="winButton"][aria-label="Maximize"],
-[class*="winButton"][aria-label="Restore"] { display: none !important; }
-
-/* ...and make it a quiet round button like Panacea's controls,
-   inset from the rounded window corner instead of a red Windows square. */
-[class*="winButtonClose"],
-[class*="winButton"][aria-label="Close"] {
-  width: 28px !important; height: 28px !important; min-width: 28px !important;
-  margin: auto 10px auto 4px !important; padding: 0 !important;
-  border-radius: 50% !important;
-  background: transparent !important;
-  color: var(--interactive-normal, #b5bac1) !important;
-  display: flex !important; align-items: center; justify-content: center;
-  transition: background .2s ease, color .2s ease !important;
-}
-[class*="winButtonClose"]:hover,
-[class*="winButton"][aria-label="Close"]:hover {
-  background: rgba(255, 255, 255, .12) !important;
-  color: #fff !important;
-}
-[class*="winButtonClose"] svg,
-[class*="winButton"][aria-label="Close"] svg { width: 14px !important; height: 14px !important; }
+/* Tiling WM: Hyprland manages the window (close with the compositor's
+   close-window shortcut), so hide Discord's own window buttons entirely. */
+[class*="winButton"] { display: none !important; }
