@@ -9,7 +9,13 @@
 ![Update-safe](https://img.shields.io/badge/survives-Panacea_updates-888888)
 ![License](https://img.shields.io/badge/license-MIT-d71920)
 
-[What changes](#what-changes) · [Install](#install) · [How patches survive updates](#how-patches-survive-updates)
+[Screenshots](#screenshots) · [What changes](#what-changes) · [Fresh install](#from-a-fresh-arch-install) · [How patches survive updates](#how-patches-survive-updates)
+
+</div>
+
+<div align="center">
+
+<img src="docs/img/desktop.jpg" width="860" alt="The desktop: Panacea's island at the top edge over a dark teal wallpaper">
 
 </div>
 
@@ -18,6 +24,23 @@ Panacea keeps a handful of folders untouched across updates:
 Everything here lives in those folders. Two Panacea files are patched in place,
 the lock screen and the vault script. Their patchers are idempotent,
 all-or-nothing, and re-run themselves whenever an update replaces the file.
+
+## Screenshots
+
+### Claude in the island
+
+A single agent tab with model pills; Enter sends. It runs through
+[panacea-claude-bridge](https://github.com/aphesist/panacea-claude-bridge) on a
+Claude subscription.
+
+<img src="docs/img/chat.png" width="460" alt="Island chat patched into a single Claude tab with Opus, Sonnet and Haiku pills">
+
+### Launcher and calendar
+
+<p>
+<img src="docs/img/launcher.png" width="420" alt="Panacea launcher">
+<img src="docs/img/calendar.png" width="420" alt="Panacea calendar">
+</p>
 
 ## What changes
 
@@ -41,7 +64,33 @@ all-or-nothing, and re-run themselves whenever an update replaces the file.
 The island chat → Claude integration is its own repo:
 [panacea-claude-bridge](https://github.com/aphesist/panacea-claude-bridge).
 
-## Install
+## From a fresh Arch install
+
+`setup.sh` rebuilds this whole machine on the **latest** versions: upstream
+Panacea, then all four of my repos on top of it.
+
+```sh
+sudo pacman -S --needed git
+git clone https://github.com/aphesist/panacea-config ~/src/panacea-config
+bash ~/src/panacea-config/setup.sh
+```
+
+| Step | What it does |
+|---|---|
+| `repos` | Clones or updates `~/Panacea` from [EnsixD/Panacea](https://github.com/EnsixD/Panacea) and my repos into `~/src` |
+| `panacea` | Panacea's own installer (packages, yay, configs, SDDM and GRUB themes) |
+| `apps` | [arch-setup](https://github.com/aphesist/arch-setup) `apps/`: Zen, Spotify + Spicetify, Zed, Claude desktop, Figma, and the full dev toolchain |
+| `nvidia` `camera` `fingerprint` | [galaxy-book3-ultra-linux](https://github.com/aphesist/galaxy-book3-ultra-linux). **Only on a Galaxy Book3 Ultra** (detected from DMI). The webcam driver is pinned to the reviewed commit |
+| `config` | This repo's `install.sh` |
+| `proton` | Proton Pass CLI and the browser login, for the vault sync |
+| `claude` | Claude Code and the island chat bridge |
+| `boot` → reboot → `autologin` | Silent boot, plus an *autologin test* GRUB entry. After you've tried the test entry, re-run the script to make autologin the default |
+
+- **It asks before every step.** Answer `y`, `n` or `q`, or pass `--yes` to skip the questions.
+- **It's resumable.** Progress is kept in `~/.local/state/panacea-setup`. `--list` shows it, and `--from <step>` redoes a step.
+- **It never runs as root.** Root work goes through each repo's own scripts, run with `sudo`, and each script checks its own result.
+
+## Install (Panacea already installed)
 
 Install Panacea first, then:
 
