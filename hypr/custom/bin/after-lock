@@ -1,0 +1,19 @@
+#!/bin/sh
+# Startup gate: run "$@" only once the session lock is confirmed, so the
+# wallpaper/pill never appear before the lock screen.
+# Fail closed: if Panacea's lock isn't up in ~4 s, lock with plain swaylock
+# (black) first. Only one gate instance does the fallback (flock).
+M="${XDG_RUNTIME_DIR:-/tmp}/panacea-locked"
+i=0
+while [ ! -e "$M" ] && [ $i -lt 40 ]; do sleep 0.1; i=$((i+1)); done
+if [ ! -e "$M" ]; then
+    (
+        flock -n 9 || exit 0
+        [ -e "$M" ] && exit 0
+        logger -t panacea-gate "Panacea lock not up after 4s - falling back to swaylock"
+        pkill -f "quickshell --path .*lock\.qml"
+        swaylock -f -c 000000 && touch "$M"
+    ) 9>"${XDG_RUNTIME_DIR:-/tmp}/panacea-gate.flock"
+    while [ ! -e "$M" ] && [ $i -lt 100 ]; do sleep 0.1; i=$((i+1)); done
+fi
+exec sh -c "$*"

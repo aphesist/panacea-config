@@ -1,0 +1,6 @@
+[Unit]
+Description=Re-hook Panacea vault into Proton Pass bridge
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I %h/.config/hypr/custom/bin/vault-patch.py

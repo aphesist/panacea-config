@@ -1,0 +1,10 @@
+-- Custom User Configuration Entry Point (Lua)
+--
+-- Require any additional custom modules here:
+-- require("custom.mymodule")
+require("custom.monitors")
+--
+-- Everything in these files goes through the Hyprland Lua API, exposed as the
+-- global `hl`. There is no `hypr` global — calling one is what produces
+-- "attempt to index a nil value (global 'hypr')".
+-- Reference: https://wiki.hypr.land/Configuring/Lua-API/

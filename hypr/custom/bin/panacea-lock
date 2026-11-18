@@ -1,0 +1,9 @@
+#!/bin/sh
+# Single entry point for automatic locks (startup, hypridle, lid).
+# Re-applies the lock.qml patch, then runs Panacea's own lock.sh under a
+# flock held for the lock's whole lifetime -> simultaneous callers (lid bind
+# + hypridle before_sleep) can't start two lock clients.
+D="$(dirname "$(readlink -f "$0")")"
+python3 -I "$D/lock-patch.py" >/dev/null 2>&1
+exec flock -n "${XDG_RUNTIME_DIR:-/tmp}/panacea-lock.flock" \
+    "$HOME/.config/panacea/scripts/lock.sh"

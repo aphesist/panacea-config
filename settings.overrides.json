@@ -1,0 +1,9 @@
+{
+  "bind_screenshot": "Print",
+  "bind_lidOn": "",
+  "bind_lidOff": "",
+  "animMove": 440,
+  "animFade": 280,
+  "animHover": 180,
+  "animBounce": 18
+}

@@ -1,0 +1,18 @@
+#!/bin/sh
+# idle-action <bat|any> <lock|off|on|suspend>
+# "bat" = only when running on battery (BAT1 discharging; covers ADP1 and
+# USB-C charging, since either makes the battery stop discharging).
+D="$(dirname "$(readlink -f "$0")")"
+on_battery() {
+    for b in /sys/class/power_supply/BAT*; do
+        [ "$(cat "$b/status" 2>/dev/null)" = "Discharging" ] && return 0
+    done
+    return 1
+}
+[ "$1" = bat ] && ! on_battery && exit 0
+case "$2" in
+    lock)    loginctl lock-session ;;
+    off)     hyprctl dispatch 'hl.dsp.dpms({ action = "off" })' ;;
+    on)      hyprctl dispatch 'hl.dsp.dpms({ action = "on" })' ;;
+    suspend) systemctl suspend ;;
+esac

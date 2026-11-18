@@ -1,0 +1,6 @@
+[Unit]
+Description=Hide hyprpaper splash text
+
+[Service]
+Type=oneshot
+ExecStart=%h/.config/hypr/custom/bin/hyprpaper-nosplash

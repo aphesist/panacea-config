@@ -1,0 +1,32 @@
+/* Panacea — Spotify in the shell's style: black, mono, soft motion. */
+:root {
+  --font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
+  --panacea-ease: cubic-bezier(.22, 1, .36, 1);
+}
+body, .encore-text, input, button { font-family: var(--font-family) !important; letter-spacing: -0.01em; }
+
+/* flat black panels with the island's rounded corners, no gradients */
+.Root__nav-bar, .Root__main-view, .Root__right-sidebar, .main-nowPlayingBar-container {
+  background: var(--spice-main) !important; border-radius: 18px;
+}
+.main-entityHeader-backgroundColor, .main-actionBarBackground-background,
+.main-entityHeader-overlay, .main-topBar-background { background: none !important; background-color: transparent !important; }
+.Root__top-container { gap: 6px; padding: 6px; background: #000 !important; }
+
+/* cards: subtle, rounded, lift on hover like the island pills */
+.main-card-card, [data-encore-id="card"] {
+  background: var(--spice-card) !important; border-radius: 16px !important;
+  transition: transform .45s var(--panacea-ease), background .3s var(--panacea-ease) !important;
+}
+.main-card-card:hover, [data-encore-id="card"]:hover { background: var(--spice-highlight) !important; transform: translateY(-2px); }
+img, .main-image-image { border-radius: 12px !important; }
+
+/* primary buttons: white pill, black glyph; red only for the live/playing accent */
+.encore-bright-accent-set, button[data-encore-id="buttonPrimary"] > span { background-color: #fff !important; color: #000 !important; }
+.main-trackList-playingIcon, .main-trackList-trackListRow.main-trackList-active .encore-text { color: #d71921 !important; fill: #d71921 !important; }
+.playback-bar .x-progressBar-fillColor, .volume-bar .x-progressBar-fillColor { background-color: #fff !important; }
+.x-progressBar-progressBarBg { border-radius: 99px; }
+
+/* thin scrollbars */
+::-webkit-scrollbar { width: 6px !important; }
+::-webkit-scrollbar-thumb { background: #2a2a2a !important; border-radius: 99px; }

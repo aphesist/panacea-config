@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch hyprpaper.conf (Panacea rewrites it on wallpaper change)
+
+[Path]
+PathChanged=%h/.config/hypr/hyprpaper.conf
+Unit=hyprpaper-nosplash.service
+
+[Install]
+WantedBy=default.target

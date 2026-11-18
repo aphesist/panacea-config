@@ -1,0 +1,7 @@
+#!/bin/sh
+# hyprpaper 0.8.5 ignores "splash = false" (Panacea's switch_theme.sh writes it)
+# and always draws Hyprland's splash text ("Configration", ...) at the bottom.
+# Make it invisible instead. Re-run by hyprpaper-nosplash.path on every rewrite.
+F="$HOME/.config/hypr/hyprpaper.conf"
+[ -f "$F" ] || exit 0
+grep -q '^splash_opacity *= *0$' "$F" || printf 'splash_opacity = 0\n' >> "$F"

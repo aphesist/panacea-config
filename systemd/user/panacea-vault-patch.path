@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch Panacea vault.sh for updates
+
+[Path]
+PathChanged=%h/.config/panacea/scripts/vault.sh
+Unit=panacea-vault-patch.service
+
+[Install]
+WantedBy=default.target
