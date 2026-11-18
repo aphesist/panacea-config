@@ -1,0 +1,5 @@
+/* Tiling WM: Hyprland manages the window, so keep only Discord's close button. */
+[class*="winButtonMinMax"],
+[class*="winButton"][aria-label="Minimize"],
+[class*="winButton"][aria-label="Maximize"],
+[class*="winButton"][aria-label="Restore"] { display: none !important; }

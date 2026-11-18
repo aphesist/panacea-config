@@ -37,6 +37,12 @@ printf 'PROTON_PASS_LINUX_KEYRING=dbus\nPROTON_PASS_DISABLE_TELEMETRY=1\n' > "$C
 say "Spotify theme (Spicetify)"
 put spotify/spotify-flags.conf "$CFG/spotify-flags.conf"   # native Wayland: scales with the display
 put electron/vesktop-flags.conf "$CFG/vesktop-flags.conf"  # Discord (Vesktop), same reason
+# Vesktop on a tiling WM: no minimum window size (fits a half tile), close button only
+mkdir -p "$CFG/vesktop/settings"
+V="$CFG/vesktop/settings.json"; [ -s "$V" ] || echo '{}' > "$V"
+jq '.disableMinSize=true' "$V" > "$V.new" && cat "$V.new" > "$V" && rm "$V.new"
+Q="$CFG/vesktop/settings/quickCss.css"
+grep -qs "keep only Discord's close button" "$Q" || cat "$HERE/electron/vesktop-quickCss.css" >> "$Q"
 for f in "$HERE"/spicetify/Themes/Panacea/*; do put "${f#$HERE/}" "$CFG/${f#$HERE/}"; done
 if command -v spicetify >/dev/null && [ -w /opt/spotify ]; then
     spicetify config current_theme Panacea color_scheme Nothing inject_css 1 replace_colors 1 >/dev/null
