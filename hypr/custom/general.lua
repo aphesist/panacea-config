@@ -14,3 +14,8 @@ hl.config({ decoration = { rounding = 16, rounding_power = 4.0 } })
 -- fade into it (lock surfaces are opaque until the fade starts), and let a
 -- relaunched lock take over if the lock client ever crashes.
 hl.config({ misc = { session_lock_xray = true, allow_session_lock_restore = true } })
+
+-- Touchpad: right-click by pressing the bottom-right corner (Panacea uses
+-- clickfinger, where only a two-finger press right-clicks). A two-finger TAP
+-- still right-clicks; a two-finger physical press becomes a left click.
+hl.config({ input = { touchpad = { clickfinger_behavior = false } } })

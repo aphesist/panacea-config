@@ -63,6 +63,7 @@ Claude subscription.
 | | Screenshot on **PrtSc** | `settings.overrides.json` |
 | | Voice dictation on **Right Ctrl** instead of AltGr, which Brazilian ABNT2 needs for `?` `/` `°` | `settings.overrides.json` |
 | | Window corners 16 px with the same squircle curve as the island | `general.lua` |
+| | Touchpad right-click by pressing the bottom-right corner (as well as a two-finger tap), instead of Panacea's two-finger-press-only *clickfinger* | `general.lua` |
 | | Spotify opens as a normal window (Panacea sends it to the hidden scratchpad) | `windowrules.lua` |
 | **Spotify** | A Spicetify theme in Panacea's *Nothing* palette: pure black, white, one red; JetBrains Mono; rounded flat panels | `spicetify/Themes/Panacea` |
 | | Runs natively on Wayland, so it follows the display scale (under XWayland with `force_zero_scaling` it was drawn at 1×, tiny); Vesktop (Discord) too | `spotify/spotify-flags.conf`, `electron/vesktop-flags.conf` |
