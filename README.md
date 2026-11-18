@@ -58,6 +58,7 @@ Claude subscription.
 | | Window corners 16 px with the same squircle curve as the island | `general.lua` |
 | | Spotify opens as a normal window (Panacea sends it to the hidden scratchpad) | `windowrules.lua` |
 | **Spotify** | A Spicetify theme in Panacea's *Nothing* palette: pure black, white, one red; JetBrains Mono; rounded flat panels | `spicetify/Themes/Panacea` |
+| | Runs natively on Wayland, so it follows the display scale (under XWayland with `force_zero_scaling` it was drawn at 1×, tiny) | `spotify/spotify-flags.conf` |
 | **Display** | Internal 2880×1800 OLED at 120 Hz, scale 1.6. Change it for your panel | `monitors.lua` |
 | **Terminal** | foot at size 11 to suit the 1.6 scale | `foot/custom.ini` |
 
