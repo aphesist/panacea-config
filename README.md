@@ -27,6 +27,12 @@ all-or-nothing, and re-run themselves whenever an update replaces the file.
 
 ## Screenshots
 
+### Lock screen
+
+A bare fingerprint glyph at the bottom: just touch the sensor at any time, no password first. It pulses when ready, shakes on a miss, and the unlock fades into the desktop.
+
+<img src="docs/img/lock.jpg" width="860" alt="Panacea lock screen with clock and a fingerprint indicator reading 'Touch the sensor to unlock'">
+
 ### Claude in the island
 
 A single agent tab with model pills; Enter sends. It runs through
