@@ -64,12 +64,17 @@ else
     echo "  skipped: open Zen once to create its profile, then re-run"
 fi
 
-say "Claude desktop: Panacea look (custom theme mod)"
-if command -v claude >/dev/null; then
+say "Claude desktop: Panacea theme"
+if pacman -Q claude-desktop-extra >/dev/null 2>&1; then
+    # claude-desktop-extra themes the whole app (Chat, Code, Cowork); applied live
+    put claude-desktop/claude-desktop-extra.jsonc "$CFG/Claude/claude-desktop-extra.jsonc"
+    echo "  installed - Ctrl+Shift+T in the app lists it as 'panacea'"
+elif command -v claude >/dev/null; then
+    # official app: themes reach only local Code sessions, via a Claude Code mod
     claude plugin marketplace add "$HERE/claude-desktop" >/dev/null 2>&1 || true
-    claude plugin install panacea-look@panacea --scope user >/dev/null 2>&1 && echo "  installed - open a new Code session in the desktop app" || echo "  could not install (claude plugin install panacea-look@panacea)"
+    claude plugin install panacea-look@panacea --scope user >/dev/null 2>&1 && echo "  installed (Code tab only) - open a new local Code session" || echo "  could not install (claude plugin install panacea-look@panacea)"
 else
-    echo "  skipped: Claude Code not installed yet"
+    echo "  skipped: neither claude-desktop-extra nor Claude Code is installed"
 fi
 
 say "settings.json overrides (PrtSc screenshot, dictation on Right Ctrl, lid binds, softer motion)"
