@@ -1,0 +1,4 @@
+/* Panacea: rounder web-content corners, matching Hyprland's 16 px window
+   rounding so the page edge echoes the screen/window corners. Zen's default
+   works out to ~5 px. Change the value to taste. */
+:root { --zen-webview-border-radius: 16px !important; }

@@ -51,6 +51,18 @@ else
     echo "  skipped: needs spicetify-cli and a writable /opt/spotify (see README)"
 fi
 
+say "Zen Browser: rounder web-content corners (userChrome.css)"
+ZEN="$CFG/zen"; ZP=""
+if [ -f "$ZEN/installs.ini" ]; then ZP="$(sed -n 's/^Default=//p' "$ZEN/installs.ini" | head -1)"; fi
+if [ -n "$ZP" ] && [ -d "$ZEN/$ZP" ]; then
+    mkdir -p "$ZEN/$ZP/chrome"
+    grep -qs "zen-webview-border-radius" "$ZEN/$ZP/chrome/userChrome.css" || cat "$HERE/zen/userChrome.css" >> "$ZEN/$ZP/chrome/userChrome.css"
+    grep -qs "legacyUserProfileCustomizations" "$ZEN/$ZP/user.js" || cat "$HERE/zen/user.js" >> "$ZEN/$ZP/user.js"
+    echo "  done - restart Zen to see it"
+else
+    echo "  skipped: open Zen once to create its profile, then re-run"
+fi
+
 say "settings.json overrides (PrtSc screenshot, dictation on Right Ctrl, lid binds, softer motion)"
 S="$CFG/panacea/settings.json"
 mkdir -p "$BK"; cp -a "$S" "$BK/settings.json"
