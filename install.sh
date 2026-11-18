@@ -36,6 +36,7 @@ printf 'PROTON_PASS_LINUX_KEYRING=dbus\nPROTON_PASS_DISABLE_TELEMETRY=1\n' > "$C
 
 say "Spotify theme (Spicetify)"
 put spotify/spotify-flags.conf "$CFG/spotify-flags.conf"   # native Wayland: scales with the display
+put electron/vesktop-flags.conf "$CFG/vesktop-flags.conf"  # Discord (Vesktop), same reason
 for f in "$HERE"/spicetify/Themes/Panacea/*; do put "${f#$HERE/}" "$CFG/${f#$HERE/}"; done
 if command -v spicetify >/dev/null && [ -w /opt/spotify ]; then
     spicetify config current_theme Panacea color_scheme Nothing inject_css 1 replace_colors 1 >/dev/null
@@ -44,7 +45,7 @@ else
     echo "  skipped: needs spicetify-cli and a writable /opt/spotify (see README)"
 fi
 
-say "settings.json overrides (PrtSc screenshot, lid binds, softer motion)"
+say "settings.json overrides (PrtSc screenshot, dictation on Right Ctrl, lid binds, softer motion)"
 S="$CFG/panacea/settings.json"
 mkdir -p "$BK"; cp -a "$S" "$BK/settings.json"
 jq -s '.[0] * .[1]' "$S" "$HERE/settings.overrides.json" > "$S.new" && cat "$S.new" > "$S" && rm "$S.new"
