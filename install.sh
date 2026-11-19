@@ -89,6 +89,7 @@ say "systemd user units (splash fix, re-patching after Panacea updates)"
 for f in "$HERE"/systemd/user/*; do put "${f#$HERE/}" "$CFG/systemd/user/$(basename "$f")"; done
 systemctl --user daemon-reload
 systemctl --user enable --now hyprpaper-nosplash.path panacea-vault-patch.path
+systemctl --user start panacea-wallpaper.service 2>/dev/null || true   # also started at login by bin/after-lock
 systemctl --user start hyprpaper-nosplash.service panacea-vault-patch.service || true
 
 python3 -I "$CFG/hypr/custom/bin/vault-patch.py" || true
