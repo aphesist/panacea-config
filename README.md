@@ -61,6 +61,7 @@ Claude subscription.
 | **Desktop** | Hides hyprpaper's splash quote ("Configration"…): hyprpaper 0.8.5 ignores `splash = false`, so set `splash_opacity = 0` instead | `bin/hyprpaper-nosplash` + `.path` unit |
 | | Softer, slower island motion, closer to macOS: 440 ms, 18 % overshoot | `settings.overrides.json` |
 | | Screenshot on **PrtSc** | `settings.overrides.json` |
+| | Island chat on **Super+C** (Panacea has no shortcut for it) | `keybindings.lua` |
 | | Voice dictation on **Right Ctrl** instead of AltGr, which Brazilian ABNT2 needs for `?` `/` `°` | `settings.overrides.json` |
 | | Window corners 16 px with the same squircle curve as the island | `general.lua` |
 | | Touchpad right-click by pressing the bottom-right corner (as well as a two-finger tap), instead of Panacea's two-finger-press-only *clickfinger* | `general.lua` |
