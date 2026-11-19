@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch Panacea's AuthView.qml for updates
+
+[Path]
+PathChanged=%h/.config/panacea/AuthView.qml
+Unit=panacea-auth-patch.service
+
+[Install]
+WantedBy=default.target

@@ -75,33 +75,48 @@ Item {
           + " L " + (ex1 - br) + " " + ey1 + " A " + br + " " + br + " 0 0 0 " + ex1 + " " + (ey1 - br)
           + " L " + ex1 + " " + (ey0 + f) + " A " + f + " " + f + " 0 0 1 " + (ex1 + f) + " " + ey0
 
-    // ---- the comet: a lit stretch [from, from + seg] travelling along the path
+    // ---- the comet: a lit stretch [from, from + segNow] travelling along the path.
+    // Each run eases in and out (slow start, glide, soft landing) and the stretch is
+    // springy: long while it's fast, short and gathered at the ends. Near the two ends
+    // (where the island meets the screen edge) it fades out instead of just vanishing.
+    // A detached island's loop has no ends: it laps at an even pace.
     readonly property real seg: Math.max(60, Math.min(360, len * 0.24))
     readonly property bool bounce: style === "bounce" && !closed
-    property real t: 0
+    property real t: 0                         // linear clock; the easing is below
     property int dir: 1
+    readonly property real p: closed ? t : (1 - Math.cos(Math.PI * t)) / 2      // eased progress
+    readonly property real vel: closed ? 1 : Math.sin(Math.PI * t)              // 0 at the ends, 1 mid-run
+    readonly property real segNow: still ? seg : seg * (closed ? 1 : 0.4 + 0.6 * vel)
     readonly property real from: still ? 0
-        : closed ? t * len - seg
-        : bounce ? (dir > 0 ? t * (len - seg) : (1 - t) * (len - seg))
-        : t * (len + seg) - seg
+        : closed ? t * len - segNow
+        : bounce ? (dir > 0 ? p * (len - segNow) : (1 - p) * (len - segNow))
+        : p * (len + segNow) - segNow
+    // how lit the comet is: fades over the last 22 % of the path at either end
+    readonly property real fade: {
+        if (still || closed) return 1;
+        var c = from + segNow / 2, d = Math.min(c, len - c) / (len * 0.22);
+        d = Math.max(0, Math.min(1, d));
+        return d * d * (3 - 2 * d);                                             // smoothstep
+    }
     SequentialAnimation {
         running: glow.visible && !glow.still
         loops: Animation.Infinite
         ScriptAction { script: glow.dir = 1 }
-        NumberAnimation { target: glow; property: "t"; from: 0; to: 1; duration: Math.max(400, glow.lap)
-                          easing.type: glow.bounce ? Easing.InOutSine : Easing.Linear }
+        NumberAnimation { target: glow; property: "t"; from: 0; to: 1; duration: Math.max(400, glow.lap) }
         ScriptAction { script: if (glow.bounce) glow.dir = -1 }
-        NumberAnimation { target: glow; property: "t"; from: 0; to: 1; duration: glow.bounce ? Math.max(400, glow.lap) : 0
-                          easing.type: Easing.InOutSine }
+        NumberAnimation { target: glow; property: "t"; from: 0; to: 1; duration: glow.bounce ? Math.max(400, glow.lap) : 0 }
+        // a breath between runs, so the restart doesn't read as a jump
+        PauseAnimation { duration: glow.bounce ? 0 : Math.round(glow.lap * 0.12) }
     }
     // the lit part of a stretch of length s whose leading end is the head: tail behind it
-    function headFrom(s) { return bounce && dir < 0 ? from : from + seg - s; }
-    function dash(s, w) { return still ? [1e6, 0.01] : [Math.max(0.01, s / w), Math.max(0.01, (closed ? len - s : len + seg + s) / w)]; }
+    function headFrom(s) { return bounce && dir < 0 ? from : from + segNow - s; }
+    function dash(s, w) { return still ? [1e6, 0.01] : [Math.max(0.01, s / w), Math.max(0.01, (closed ? len - s : len + segNow + s) / w)]; }
     function off(s, w) { return still ? 0 : -headFrom(s) / w; }
 
     // soft halo around the head, centred on the edge
     Item {
         anchors.fill: parent
+        opacity: glow.fade
         layer.enabled: glow.visible
         layer.effect: MultiEffect { blurEnabled: true; blur: 0.55; blurMax: 14 }
         Shape {
@@ -111,7 +126,7 @@ Item {
                 fillColor: "transparent"; strokeWidth: 4; capStyle: ShapePath.RoundCap
                 strokeColor: glow.a(glow.c1, 0.75 * glow.intensity)
                 strokeStyle: ShapePath.DashLine
-                dashPattern: glow.dash(glow.seg * 0.6, 4); dashOffset: glow.off(glow.seg * 0.6, 4)
+                dashPattern: glow.dash(glow.segNow * 0.6, 4); dashOffset: glow.off(glow.segNow * 0.6, 4)
                 PathSvg { path: glow.d }
             }
         }
@@ -125,25 +140,30 @@ Item {
             strokeColor: glow.a(glow.c1, 0.14 * glow.intensity)
             PathSvg { path: glow.d }
         }
+    }
+    Shape {
+        anchors.fill: parent
+        opacity: glow.fade
+        preferredRendererType: Shape.CurveRenderer
         ShapePath {
             fillColor: "transparent"; strokeWidth: 1.1; capStyle: ShapePath.RoundCap
             strokeColor: glow.a(glow.c2, 0.35 + 0.35 * glow.intensity)
             strokeStyle: ShapePath.DashLine
-            dashPattern: glow.dash(glow.seg, 1.1); dashOffset: glow.off(glow.seg, 1.1)
+            dashPattern: glow.dash(glow.segNow, 1.1); dashOffset: glow.off(glow.segNow, 1.1)
             PathSvg { path: glow.d }
         }
         ShapePath {
             fillColor: "transparent"; strokeWidth: 1.2; capStyle: ShapePath.RoundCap
             strokeColor: glow.a(glow.c1, 0.55 + 0.4 * glow.intensity)
             strokeStyle: ShapePath.DashLine
-            dashPattern: glow.dash(glow.seg * 0.55, 1.2); dashOffset: glow.off(glow.seg * 0.55, 1.2)
+            dashPattern: glow.dash(glow.segNow * 0.55, 1.2); dashOffset: glow.off(glow.segNow * 0.55, 1.2)
             PathSvg { path: glow.d }
         }
         ShapePath {
             fillColor: "transparent"; strokeWidth: 1.5; capStyle: ShapePath.RoundCap
             strokeColor: glow.a(Qt.lighter(glow.c0, 1.2), 1)
             strokeStyle: ShapePath.DashLine
-            dashPattern: glow.dash(glow.seg * 0.2, 1.5); dashOffset: glow.off(glow.seg * 0.2, 1.5)
+            dashPattern: glow.dash(glow.segNow * 0.2, 1.5); dashOffset: glow.off(glow.segNow * 0.2, 1.5)
             PathSvg { path: glow.d }
         }
     }

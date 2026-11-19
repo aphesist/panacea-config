@@ -1,0 +1,6 @@
+[Unit]
+Description=Re-apply the password prompt redesign to Panacea's AuthView.qml
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I %h/.config/hypr/custom/bin/auth-patch.py

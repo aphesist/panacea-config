@@ -35,6 +35,7 @@ put fish/custom/proton-pass.fish "$CFG/fish/custom/proton-pass.fish"
 put foot/custom.ini "$CFG/foot/custom.ini"
 mkdir -p "$CFG/environment.d"
 printf 'PROTON_PASS_LINUX_KEYRING=dbus\nPROTON_PASS_DISABLE_TELEMETRY=1\n' > "$CFG/environment.d/60-proton-pass.conf"
+printf 'XDG_SESSION_TYPE=wayland\n' > "$CFG/environment.d/50-session-type.conf"   # tty1 autologin sets none; Zen/Firefox need it for screen sharing
 
 say "Spotify theme (Spicetify)"
 put spotify/spotify-flags.conf "$CFG/spotify-flags.conf"   # native Wayland: scales with the display
@@ -110,6 +111,10 @@ systemctl --user try-restart xdg-desktop-portal || true
 say "Mullvad in the island (VPN page and country button control the mullvad CLI)"
 systemctl --user enable --now panacea-vpn-patch.path
 python3 -I "$CFG/hypr/custom/bin/vpn-patch.py" || echo "  VPN patch skipped - Mullvad keeps opening its app"
+
+say "Password prompt in the island's style"
+systemctl --user enable --now panacea-auth-patch.path
+python3 -I "$CFG/hypr/custom/bin/auth-patch.py" || echo "  password prompt patch skipped - Panacea's own prompt stays"
 
 say "Touchpad: three-finger swipe up/down = volume"
 systemctl --user enable --now panacea-gesture-patch.path

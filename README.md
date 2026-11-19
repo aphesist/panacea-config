@@ -61,8 +61,9 @@ a selector that glides behind the names with a small overshoot.
 A thin light runs along the island's exact outline, flares included, while
 something works: Claude's orange while it thinks, white while the VPN connects,
 and any agent's own colours (`panacea-glow start <name> "#hex,#hex"`, or
-`panacea-glow run <name> "#hex" -- <command>`). It moves with the island as one
-piece. Settings → Motion → *Activity glow*: on/off per source, loop or bounce,
+`panacea-glow run <name> "#hex" -- <command>`). It eases in and out with a springy stretch, fades out
+towards the two ends where the island meets the screen, and moves with the
+island as one piece. Settings → Motion → *Activity glow*: on/off per source, loop or bounce,
 speed, intensity.
 
 <img src="docs/img/glow.gif" width="680" alt="The collapsed island with a thin glow running along its edge: orange for Claude, then white, then violet and cyan for an agent">
@@ -125,6 +126,7 @@ dialog on their own.
 | | **Animated tabs**: Home ↔ Claude slides the page and stretches the tab pill | `bin/portal-patch.py` |
 | | **Activity glow** along the island's outline while Claude thinks, the VPN connects or an agent runs; configurable in Settings → Motion; `panacea-glow` for scripts | `bin/IslandGlow.qml`, `bin/panacea-glow`, `bin/portal-patch.py` |
 | | **Task manager** on **Super+Shift+Esc**: process tree with icons and End task, real hardware with live charts, user and system services | `bin/TasksView.qml`, `bin/TasksChart.qml`, `panacea/scripts/custom/taskman.py`, `keybindings.lua` |
+| | **Password prompt in the island's style**: a plain lock, "Password needed" and one simple line saying what it's for ("Enter your password to run X as administrator"), polkit's raw text behind *Details*, flat Cancel / Unlock pills | `bin/auth-patch.py` |
 | | Softer, slower island motion, closer to macOS: 440 ms, 18 % overshoot | `settings.overrides.json` |
 | | Screenshot on **PrtSc** | `settings.overrides.json` |
 | | Island chat on **Super+C** (Panacea has no shortcut for it) | `keybindings.lua` |
