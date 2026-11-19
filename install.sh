@@ -70,7 +70,17 @@ if [ -n "$ZP" ] && [ -d "$ZEN/$ZP" ]; then
         key="$(printf '%s' "$line" | sed -n 's/^user_pref("\([^"]*\)".*/\1/p')"
         [ -n "$key" ] && ! grep -qsF "\"$key\"" "$ZEN/$ZP/user.js" && printf '%s\n' "$line" >> "$ZEN/$ZP/user.js"
     done < "$HERE/zen/user.js"
-    echo "  done - restart Zen to see it"
+    # the dock layout (url bar as an island-style notch at the bottom): the userChrome.js
+    # loader (fx-autoconfig; root once, a pacman hook keeps it after Zen updates) + our script
+    if [ ! -f /opt/zen-browser-bin/config.js ] && [ -d /opt/zen-browser-bin ]; then
+        echo "  the dock needs the userChrome.js loader: installing it (asks for your password)"
+        pkexec sh "$HERE/zen/loader/install-loader.sh" || echo "  loader skipped: the dock stays off"
+    fi
+    mkdir -p "$ZEN/$ZP/chrome/JS"
+    cp -r "$HERE/zen/loader/utils" "$ZEN/$ZP/chrome/"
+    install -m 644 "$HERE/zen/dock/panacea-dock.uc.js" "$ZEN/$ZP/chrome/JS/panacea-dock.uc.js"
+    install -m 644 "$HERE/zen/dock/panacea-dock.css" "$ZEN/$ZP/chrome/panacea-dock.css"
+    echo "  done - restart Zen to see it (dock off: about:config, panacea.zen.dock = false)"
 else
     echo "  skipped: open Zen once to create its profile, then re-run"
 fi

@@ -1,0 +1,387 @@
+/* Panacea dock: Zen with no top toolbar, the url bar as a small pill at the bottom
+ * (a reverse dock, like the island), growing with its text; suggestions open upward.
+ * Loaded by JS/panacea-dock.uc.js while panacea.zen.dock is true (live, no restart). */
+:root {
+  --dock-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dock-bottom: 14px;
+  --dock-height: 38px;
+  --dock-r-in: 14px;                       /* field, result rows */
+  --dock-r-out: 22px;                      /* notch top + inverted corners = r-in + the 8px gap */
+}
+
+/* ---------------------------------------------------------------- no top toolbar */
+#zen-appcontent-navbar-wrapper, #zen-appcontent-navbar-container, #nav-bar {
+  min-height: 0 !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+}
+#nav-bar-customization-target > :not(#urlbar-container),
+#nav-bar > :not(#nav-bar-customization-target),
+#zen-appcontent-navbar-container > :not(#nav-bar),
+.titlebar-buttonbox-container {
+  display: none !important;
+}
+
+/* ---------------------------------------------------------------- the dock
+ * Like the island, upside down: a notch in the frame colour (--p0) rising from the
+ * window's bottom edge, its lower corners curving out into the frame. The url field
+ * is the only lighter surface. Searching grows the notch upward, results inside it,
+ * no dividers. Width: --dock-w, set by panacea-dock.uc.js to fit the text. */
+#urlbar-container {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  --urlbar-container-height: var(--dock-height) !important;
+  --urlbar-height: var(--dock-height) !important;
+}
+#urlbar, #urlbar[popover-open] {
+  position: fixed !important;
+  inset: auto auto 0 50% !important;
+  translate: -50% 0 !important;
+  margin: 0 !important;
+  /* min = max = the fitted width (something in Zen pins width itself) */
+  min-width: var(--dock-w, 360px) !important;
+  max-width: var(--dock-w, 360px) !important;
+  height: auto !important;
+  padding: 8px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column-reverse !important;   /* results above the field */
+  z-index: 50 !important;
+  transition: min-width 0.32s var(--dock-ease), max-width 0.32s var(--dock-ease) !important;
+}
+#urlbar[open] {
+  --dock-w: min(760px, 70vw) !important;      /* results get room while searching */
+}
+
+/* the notch: frame colour, round top, inverted corners at the bottom */
+#urlbar > .urlbar-background,
+#urlbar[popover-open] > .urlbar-background,
+#urlbar[focused] > .urlbar-background {
+  inset: 0 !important;
+  top: var(--dock-grow, 0px) !important;   /* animated by panacea-dock.uc.js on height changes */
+  background: var(--p0, #050505) !important;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  border-radius: var(--dock-r-out) var(--dock-r-out) 0 0 !important;
+}
+#urlbar > .urlbar-background::before,
+#urlbar > .urlbar-background::after {
+  content: "";
+  position: absolute;
+  /* meet the page's bottom edge, so the curve flows out of it; 1px lower and taller so
+     no row of the page shows between the curve and the frame at fractional scales */
+  bottom: calc(var(--zen-element-separation, 8px) - 1px);
+  width: var(--dock-r-out);
+  height: calc(var(--dock-r-out) + 1px);
+  pointer-events: none;
+}
+#urlbar > .urlbar-background::before {
+  left: calc(-1 * var(--dock-r-out));
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 23' preserveAspectRatio='none'%3E%3Cpath fill='%23050505' d='M22 0A22 22 0 0 1 0 22V23H22Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;   /* real geometry, like the island's NotchShape */
+}
+#urlbar > .urlbar-background::after {
+  right: calc(-1 * var(--dock-r-out));
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 23' preserveAspectRatio='none'%3E%3Cpath fill='%23050505' d='M0 0A22 22 0 0 0 22 22V23H0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+}
+
+/* the field: the only lighter surface */
+#urlbar > .urlbar-input-container {
+  position: relative !important;
+  height: var(--dock-height) !important;
+  padding-block: 0 !important;
+  padding-inline: 12px !important;
+  flex: none !important;
+  width: 100% !important;
+  background: var(--p2, #161616) !important;
+  border: 0 !important;
+  outline: 0 !important;
+  border-radius: var(--dock-r-in) !important;
+}
+
+#urlbar .urlbar-input-box { flex: 1 1 auto !important; }
+
+/* results: inside the notch, no dividers, a small rise when they appear */
+#urlbar .urlbarView {
+  contain: inline-size !important;
+  width: 100% !important;
+  margin: 0 0 6px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+#urlbar:not([open]) .urlbarView { display: none !important; }
+#urlbar[open] .urlbarView {
+  animation: dock-rise 0.22s var(--dock-ease) both;
+}
+@keyframes dock-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+#urlbar .urlbarView-body-outer, #urlbar .urlbarView-body-inner, #urlbar #urlbar-results {
+  border: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+}
+#urlbar .search-one-offs, #urlbar .urlbarView-row-inner::before,
+#urlbar .urlbarView-row[label]::before {
+  display: none !important;
+}
+#urlbar .urlbarView-row {
+  border-radius: var(--dock-r-in) !important;
+  border: 0 !important;
+}
+#urlbar .urlbarView-row:hover > .urlbarView-row-inner,
+#urlbar .urlbarView-row[selected] > .urlbarView-row-inner {
+  border-radius: var(--dock-r-in) !important;
+}
+#urlbar .urlbarView-row[selected] {
+  background: var(--p2, #161616) !important;
+}
+
+/* the page card: same gap at the top as on the other sides (the toolbar used to give it) */
+#tabbrowser-tabbox {
+  margin-top: var(--zen-element-separation, 8px) !important;
+}
+
+/* no stroke between the frame and the page (also in panacea-dark.css) */
+:root { --zen-appcontent-border: 0 solid transparent !important; }
+
+/* ---------------------------------------------------------------- calm: no hover shading */
+#urlbar#urlbar:hover > .urlbar-background, #urlbar#urlbar:hover:not([focused]) > .urlbar-background,
+#urlbar#urlbar[focused]:hover > .urlbar-background {
+  background: var(--p0, #050505) !important;
+}
+#urlbar#urlbar:hover > .urlbar-input-container, #urlbar#urlbar:hover:not([focused]) > .urlbar-input-container {
+  background: var(--p2, #161616) !important;
+}
+
+/* ---------------------------------------------------------------- the address, centred
+ * centred while you're not typing; left-aligned while typing (like Safari) */
+#urlbar:not([focused]) .urlbar-input-box { justify-content: center !important; }
+#urlbar:not([focused]) #urlbar-input, #urlbar:not([focused]) .urlbar-input { text-align: center !important; }
+
+/* ---------------------------------------------------------------- icons: overlaid at the edges,
+ * out of the layout so the text centres across the whole field; they fade in slowly
+ * while you hover the bar */
+/* the text spans the whole field underneath (so it centres on the full width); the
+   icons stay in a normal row on top: the ones before the text at the left edge, the
+   rest side by side at the right */
+#urlbar > .urlbar-input-container > .urlbar-input-box {
+  position: absolute !important;
+  inset: 0 !important;
+  padding-inline: 40px !important;
+  z-index: 0;
+}
+#urlbar > .urlbar-input-container > :not(.urlbar-input-box, #panacea-dock-host) {
+  position: relative !important;
+  z-index: 1;
+}
+#urlbar > .urlbar-input-container { justify-content: flex-end !important; }   /* right group at the edge */
+#urlbar > .urlbar-input-container > :not(.urlbar-input-box, #panacea-dock-host):has(~ .urlbar-input-box) {
+  margin-inline-end: auto !important;
+}
+#urlbar:not([focused]) > .urlbar-input-container > :not(.urlbar-input-box, #panacea-dock-host) {
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+#urlbar:not([focused]):hover > .urlbar-input-container > :not(.urlbar-input-box, #panacea-dock-host) {
+  opacity: 1;
+  transition: opacity 0.9s ease;
+}
+
+/* ---------------------------------------------------------------- results aligned with the field */
+#urlbar .urlbarView, #urlbar .urlbarView-body-outer, #urlbar .urlbarView-body-inner,
+#urlbar #urlbar-results, #urlbar .urlbarView-results {
+  padding: 0 !important;
+  margin-inline: 0 !important;
+}
+#urlbar .urlbarView { margin-block: 0 8px !important; }        /* the same 8px gap as everywhere */
+#urlbar .urlbarView-row {
+  margin: 0 !important;
+  padding-inline: 0 !important;
+  width: 100% !important;
+  border-radius: var(--dock-r-in) !important;
+}
+#urlbar .urlbarView-row-inner {
+  padding-inline: 12px !important;
+  border-radius: var(--dock-r-in) !important;
+}
+#urlbar .urlbarView-row:is(:hover, [selected]),
+#urlbar .urlbarView-row:is(:hover, [selected]) > .urlbarView-row-inner {
+  background: var(--p2, #161616) !important;
+}
+#urlbar .urlbarView-row:hover:not([selected]) > .urlbarView-row-inner { background: transparent !important; }
+
+/* ---------------------------------------------------------------- the text box fills the field */
+#urlbar #urlbar-input, #urlbar .urlbar-input {
+  field-sizing: fixed !important;
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+/* ---------------------------------------------------------------- idle: just the address on the dock
+ * no field while you're not in it; it fades in when you focus */
+#urlbar > .urlbar-input-container {
+  transition: background-color 0.35s var(--dock-ease) !important;
+}
+#urlbar#urlbar:not([focused]) > .urlbar-input-container,
+#urlbar#urlbar:not([focused]):hover > .urlbar-input-container {
+  background-color: transparent !important;
+}
+#urlbar#urlbar[focused] > .urlbar-input-container,
+#urlbar#urlbar[focused]:hover > .urlbar-input-container {
+  background-color: var(--p2, #161616) !important;
+}
+
+/* idle: the domain only (panacea-dock.uc.js puts it in #panacea-dock-host) */
+#panacea-dock-host {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 34px;
+  pointer-events: none;
+  color: var(--p-fg, #ececec);
+  font-size: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.25s var(--dock-ease);
+}
+#urlbar[panacea-host]:not([focused]) #panacea-dock-host { opacity: 1; }
+#urlbar #urlbar-input, #urlbar .urlbar-input { transition: opacity 0.25s var(--dock-ease); }
+#urlbar[panacea-host]:not([focused]) #urlbar-input,
+#urlbar[panacea-host]:not([focused]) .urlbar-input { opacity: 0 !important; }
+
+/* fixes: rows exactly as wide as the field (padding inside the width); icons never stretch */
+#urlbar .urlbarView-row, #urlbar .urlbarView-row-inner {
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+}
+#urlbar > .urlbar-input-container > :not(.urlbar-input-box, #panacea-dock-host) {
+  flex: none !important;
+}
+
+/* results: Firefox widens the list by a gutter on each side and pulls it back with
+   negative margins; we drop both, so rows line up exactly with the field */
+#urlbar {
+  --urlbarview-row-gutter: 0px !important;
+  --urlbarview-results-padding: 0px !important;
+}
+#urlbar .urlbarView-results {
+  width: 100% !important;
+  margin-inline: 0 !important;
+}
+
+/* icons: exactly two, at the field's edges. Zen's copy-link button (#zen-copy-url-button,
+   in #page-action-buttons) at the left, its site-data button (#zen-site-data-icon-button,
+   in #identity-box) at the right. Their containers stay static so both position against
+   the field; everything else in them is hidden. */
+#urlbar#urlbar > .urlbar-input-container > #identity-box,
+#urlbar#urlbar > .urlbar-input-container > #page-action-buttons {
+  position: static !important;
+  order: 0 !important;
+  margin: 0 !important;
+}
+#urlbar #identity-box > :not(#zen-site-data-icon-button),
+#urlbar #page-action-buttons > :not(#zen-copy-url-button) {
+  display: none !important;
+}
+#urlbar #zen-copy-url-button, #urlbar #zen-site-data-icon-button {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  height: auto !important;
+  translate: none !important;
+  transform: none !important;
+  margin: auto 0 !important;
+  padding-block: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 2;
+}
+#urlbar #zen-copy-url-button > image, #urlbar #zen-site-data-icon-button > image {
+  margin-block: 0 !important;
+  translate: none !important;
+}
+#urlbar #zen-copy-url-button { left: 6px !important; right: auto !important; }
+#urlbar #zen-site-data-icon-button { right: 6px !important; left: auto !important; }
+
+/* the "go" arrow after the text (Enter does the same): it landed mid-field */
+#urlbar .urlbar-go-button { display: none !important; }
+
+/* ---------------------------------------------------------------- our own two buttons
+ * (panacea-dock.uc.js): link at the left, site settings at the right. Zen's copy-link
+ * button is hidden; its site-data button stays, invisible, where ours is, so its panel
+ * opens from there (upward). */
+#urlbar #zen-copy-url-button { display: none !important; }
+#urlbar #zen-site-data-icon-button {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  width: 30px !important;
+}
+.panacea-dock-btn {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  color: var(--p-dim, #8c8c8c);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.7s ease, color 0.25s ease;
+}
+#panacea-dock-copy { left: 6px; }
+#panacea-dock-site { right: 6px; }
+#urlbar[panacea-host]:not([focused]):hover .panacea-dock-btn {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.9s ease, color 0.25s ease;
+}
+.panacea-dock-btn:hover { color: var(--p-fg, #ececec); }
+.panacea-dock-btn::before {
+  content: "";
+  width: 15px;
+  height: 15px;
+  background: currentColor;
+  mask: var(--icon) center / contain no-repeat;
+}
+#panacea-dock-copy {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E");
+}
+#panacea-dock-copy[done] {
+  color: var(--p-fg, #ececec);
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+}
+#panacea-dock-site {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4'/%3E%3C/svg%3E");
+}
+
+/* our buttons stay absolutely placed (beats the generic "icons in a row" rule above) */
+#urlbar#urlbar > .urlbar-input-container > .panacea-dock-btn {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  margin: 0 !important;
+  flex: none !important;
+  z-index: 3 !important;
+}
+#urlbar#urlbar > .urlbar-input-container > #panacea-dock-copy { left: 6px !important; right: auto !important; }
+#urlbar#urlbar > .urlbar-input-container > #panacea-dock-site { right: 6px !important; left: auto !important; }

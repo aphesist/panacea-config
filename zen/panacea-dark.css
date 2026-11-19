@@ -42,6 +42,7 @@
   --zen-colors-border-contrast: var(--p-line) !important;
   --zen-colors-input-bg: var(--p2) !important;
   --zen-urlbar-background: var(--p2) !important;
+  --zen-appcontent-border: 0 solid transparent !important;   /* no stroke around the page */
 
   /* Firefox: toolbars and fields */
   --toolbox-bgcolor: var(--p0) !important;
@@ -109,7 +110,6 @@
   background-color: var(--p1) !important;
   border-radius: var(--zen-webview-border-radius, 16px) !important;
   overflow: clip !important;
-  box-shadow: 0 0 0 1px var(--p-line-soft) !important;   /* hairline edge, follows the rounding */
 }
 .browserStack, browser[type="content"] {
   background-color: var(--p1) !important;
@@ -122,9 +122,6 @@
   --zen-urlbar-background-transparent: var(--p2) !important;
   background-color: var(--p2) !important;
   border: 1px solid var(--p-line-soft) !important;
-}
-#urlbar:hover:not([focused]) > .urlbar-background {
-  background-color: #1a1a1a !important;
 }
 #urlbar[focused="true"] > .urlbar-background {
   border-color: color-mix(in srgb, var(--p-accent) 60%, transparent) !important;
