@@ -12,7 +12,7 @@ back on its own). Re-run by panacea-portal-patch.path after Panacea updates.
 import os, sys
 
 D = os.path.expanduser("~/.config/panacea")
-VERSION = "v2"
+VERSION = "v3"
 TAG_PREFIX = "// panacea-local portal patch "
 TAG = TAG_PREFIX + VERSION
 
@@ -66,6 +66,22 @@ SHELL = [
      "            s.kind = \"portal\";\n"
      "            root.startIslandPick(s);\n"
      "        }\n"),
+    # the approval toast's green check / red cross circles -> flat Deny / Allow pills
+    ("""                        width: 30; height: 30; radius: 15
+                        color: modelData.action === "panacea-allow" ? "#305f46" : "#643f45"
+                        Text { anchors.centerIn: parent; text: modelData.label; color: modelData.action === "panacea-allow" ? "#9be0b1" : "#f0b3b6"; font { pixelSize: 17; bold: true } }
+                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.replyAgentApproval(modelData.action) }
+""", """                        // """ + TAG + """: flat pills in Panacea's palette (white = primary), like the chat's approval card
+                        width: 76; height: 28; radius: 14
+                        readonly property bool primary: modelData.action === "panacea-allow"
+                        color: primary ? (apMa.containsMouse ? Qt.rgba(1, 1, 1, 0.85) : root.colFg)
+                                       : (apMa.containsMouse ? Qt.rgba(1, 1, 1, 0.16) : Qt.rgba(1, 1, 1, 0.09))
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                        Text { anchors.centerIn: parent; text: parent.primary ? "Allow" : "Deny"
+                               color: parent.primary ? root.colBg : root.colFg
+                               font { family: root.fontFam; pixelSize: root.fontSize - 3; bold: parent.primary } }
+                        MouseArea { id: apMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.replyAgentApproval(modelData.action) }
+"""),
     # the old windowed chat picker is never opened any more
     ("    active: root.chatFilePickerOpen\n    FloatingWindow {\n    id: chatPickerWindow\n",
      "    active: false   " + TAG + ": replaced by the island picker\n    FloatingWindow {\n    id: chatPickerWindow\n"),
