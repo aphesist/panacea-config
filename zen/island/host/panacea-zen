@@ -1,0 +1,32 @@
+#!/usr/bin/python3 -I
+"""panacea-zen: talk to Zen through the "Panacea for Zen" add-on. Prints one JSON line.
+
+    panacea-zen suggest <text>      tabs, bookmarks, history, search suggestions
+    panacea-zen open <text> [--new] open an address or search (current tab, or a new one)
+    panacea-zen switch <tabId>      select that tab
+    panacea-zen current             the active tab
+    panacea-zen ping"""
+import json, os, socket, sys
+
+SOCK = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}", "panacea-zen.sock")
+a = sys.argv[1:]
+if not a or a[0] in ("-h", "--help"):
+    print(__doc__); sys.exit(0)
+cmd, rest = a[0], a[1:]
+new = "--new" in rest
+rest = [x for x in rest if x != "--new"]
+req = {"cmd": cmd}
+if cmd == "suggest": req["q"] = " ".join(rest)
+elif cmd == "open": req.update(text=" ".join(rest), newTab=new)
+elif cmd == "switch": req["tabId"] = int(rest[0])
+try:
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM); s.settimeout(6); s.connect(SOCK)
+    s.sendall((json.dumps(req) + "\n").encode())
+    buf = b""
+    while not buf.endswith(b"\n"):
+        chunk = s.recv(65536)
+        if not chunk: break
+        buf += chunk
+    print(buf.decode().strip() or '{"error": "no answer"}')
+except OSError:
+    print('{"error": "zen not connected"}'); sys.exit(1)

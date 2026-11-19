@@ -1,0 +1,7 @@
+{
+  "name": "panacea_zen",
+  "description": "Panacea island <-> Zen (Panacea for Zen add-on)",
+  "path": "@HOST@",
+  "type": "stdio",
+  "allowed_extensions": ["panacea-zen@aphesist"]
+}

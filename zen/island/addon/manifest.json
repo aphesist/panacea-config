@@ -1,0 +1,16 @@
+{
+  "manifest_version": 2,
+  "name": "Panacea for Zen",
+  "version": "0.1.0",
+  "description": "Lets the Panacea island search and open tabs, history and bookmarks in Zen (no AI, local only; search suggestions come from your search engine).",
+  "permissions": ["nativeMessaging", "tabs", "history", "bookmarks", "search",
+                  "https://duckduckgo.com/*", "https://suggestqueries.google.com/*"],
+  "background": { "scripts": ["background.js"] },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "panacea-zen@aphesist",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": { "required": ["searchTerms"] }
+    }
+  }
+}
