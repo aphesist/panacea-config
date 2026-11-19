@@ -1,3 +1,6 @@
+@property --dock-r-out { syntax: "<length>"; inherits: true; initial-value: 22px; }
+@property --dock-field-h { syntax: "<length>"; inherits: true; initial-value: 38px; }
+@property --dock-pad-y { syntax: "<length>"; inherits: true; initial-value: 8px; }
 /* Panacea dock: Zen with no top toolbar, the url bar as a small pill at the bottom
  * (a reverse dock, like the island), growing with its text; suggestions open upward.
  * Loaded by JS/panacea-dock.uc.js while panacea.zen.dock is true (live, no restart). */
@@ -385,3 +388,27 @@
 }
 #urlbar#urlbar > .urlbar-input-container > #panacea-dock-copy { left: 6px !important; right: auto !important; }
 #urlbar#urlbar > .urlbar-input-container > #panacea-dock-site { right: 6px !important; left: auto !important; }
+
+/* ---------------------------------------------------------------- three states
+ * idle    slim: the address sits on the page's bottom edge, half in the frame band
+ * hover   the standard dock, with the two buttons
+ * focused the search (field + results)                                         */
+#urlbar {
+  --dock-field-h: var(--dock-height);
+  --dock-pad-y: 8px;
+  --dock-r-out: 22px;
+  transition: min-width 0.32s var(--dock-ease), max-width 0.32s var(--dock-ease),
+              --dock-field-h 0.32s var(--dock-ease), --dock-pad-y 0.32s var(--dock-ease),
+              --dock-r-out 0.32s var(--dock-ease) !important;
+}
+#urlbar:not([focused], [open]):not(:hover) {
+  --dock-field-h: 20px;
+  --dock-pad-y: 0px;
+  --dock-r-out: 12px;
+}
+#urlbar, #urlbar[popover-open] {
+  padding: var(--dock-pad-y) 8px var(--dock-pad-y) !important;
+}
+#urlbar:not([focused], [open]):not(:hover) { padding-top: 1px !important; }
+#urlbar > .urlbar-input-container { height: var(--dock-field-h) !important; }
+#urlbar:not([focused], [open]):not(:hover) #panacea-dock-host { padding-inline: 10px; font-size: 0.92em; }

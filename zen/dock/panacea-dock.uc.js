@@ -80,9 +80,11 @@
     const text = host || input.value || input.placeholder || "";
     const cs = getComputedStyle(input);          // .font can be empty in Firefox: build it
     ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-    const chrome = 96;                                  // paddings + room for the two edge icons
+    const hover = bar.matches(":hover");
+    // idle: compact, just the domain; hover: room for the two edge buttons
+    const chrome = bar.focused || hover ? 96 : 34;
     const max = Math.min(880, window.innerWidth * 0.72);
-    const min = bar.focused ? 320 : 180;
+    const min = bar.focused ? 320 : hover ? 180 : 90;
     const w = Math.round(Math.max(min, Math.min(max, ctx.measureText(text).width + chrome)));
     bar.style.setProperty("--dock-w", w + "px");
   }
@@ -117,14 +119,17 @@
     const site = mk("panacea-dock-site", "Site settings and extensions");
     site.addEventListener("click", (e) => {
       e.stopPropagation(); e.preventDefault();
-      const anchor = document.getElementById("zen-site-data-icon-button");
-      anchor?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window, button: 0 }));
+      // Zen's own handler, anchored to our button (its button is hidden, so it won't open)
+      const p = window.gZenSiteDataPanel;
+      if (p) window.gUnifiedExtensions.togglePanel(e, null, p.unifiedPanel, p.unifiedPanelView, site);
     });
     for (const ev of ["input", "focus", "blur"]) bar.inputField.addEventListener(ev, later);
     gBrowser.tabContainer.addEventListener("TabSelect", () => setTimeout(fit, 50));
     gBrowser.addProgressListener({ onLocationChange: () => setTimeout(fit, 50),
       QueryInterface: ChromeUtils.generateQI(["nsIWebProgressListener", "nsISupportsWeakReference"]) });
     window.addEventListener("resize", later);
+    bar.addEventListener("mouseenter", later);
+    bar.addEventListener("mouseleave", later);
     setTimeout(fit, 300);
 
     // the notch's height eases into every change (results open/close, rows come and go):
@@ -136,7 +141,8 @@
       const h = bar.getBoundingClientRect().height;
       const d = h - lastH;
       lastH = h;
-      if (!bg || !d || Math.abs(d) > 1500 || !document.documentElement.hasAttribute("panacea-dock")) return;
+      // small changes (idle <-> hover) are CSS transitions already; this is for the results
+      if (!bg || Math.abs(d) < 34 || Math.abs(d) > 1500 || !document.documentElement.hasAttribute("panacea-dock")) return;
       bg.animate([{ "--dock-grow": d + "px" }, { "--dock-grow": "0px" }],
                  { duration: 280, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
     }).observe(bar);
