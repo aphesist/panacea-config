@@ -12,7 +12,7 @@ back on its own). Re-run by panacea-portal-patch.path after Panacea updates.
 import os, sys
 
 D = os.path.expanduser("~/.config/panacea")
-VERSION = "v3"
+VERSION = "v4"
 TAG_PREFIX = "// panacea-local portal patch "
 TAG = TAG_PREFIX + VERSION
 
@@ -81,6 +81,14 @@ SHELL = [
                                color: parent.primary ? root.colBg : root.colFg
                                font { family: root.fontFam; pixelSize: root.fontSize - 3; bold: parent.primary } }
                         MouseArea { id: apMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.replyAgentApproval(modelData.action) }
+"""),
+    # the approval toast's icon: centred on the card's height (it's taller than a plain toast)
+    ("""                Layout.preferredHeight: 34
+                Layout.alignment: Qt.AlignTop
+                radius: 10
+""", """                Layout.preferredHeight: 34
+                Layout.alignment: root.approvalToast ? Qt.AlignVCenter : Qt.AlignTop   """ + TAG + """
+                radius: 10
 """),
     # the old windowed chat picker is never opened any more
     ("    active: root.chatFilePickerOpen\n    FloatingWindow {\n    id: chatPickerWindow\n",
