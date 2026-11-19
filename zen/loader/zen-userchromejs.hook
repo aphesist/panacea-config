@@ -1,0 +1,11 @@
+# Re-apply the userChrome.js loader (fx-autoconfig) after Zen updates (panacea-config)
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = zen-browser-bin
+
+[Action]
+Description = Zen: re-applying the userChrome.js loader (fx-autoconfig)...
+When = PostTransaction
+Exec = /usr/bin/sh -c 'install -m 644 /usr/local/share/zen-userchromejs/config.js /opt/zen-browser-bin/config.js && install -m 644 /usr/local/share/zen-userchromejs/config-prefs.js /opt/zen-browser-bin/defaults/pref/config-prefs.js'
