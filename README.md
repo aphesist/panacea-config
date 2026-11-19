@@ -61,10 +61,20 @@ a selector that glides behind the names with a small overshoot.
 A thin light runs along the island's exact outline, flares included, while
 something works: Claude's orange while it thinks, white while the VPN connects,
 and any agent's own colours (`panacea-glow start <name> "#hex,#hex"`, or
-`panacea-glow run <name> "#hex" -- <command>`). It eases in and out with a springy stretch, fades out
-towards the two ends where the island meets the screen, and moves with the
-island as one piece. Settings → Motion → *Activity glow*: on/off per source, loop or bounce,
-speed, intensity.
+`panacea-glow run <name> "#hex" -- <command>`). On the island attached to the
+top edge it fades out towards both ends, where the island meets the screen;
+outside the light the island stays pure black. It moves with the island as one
+piece. Settings → Motion → *Activity glow*: on/off per source, speed,
+intensity, and the animation:
+
+| Animation | Attached island | Detached island (big pages) |
+|---|---|---|
+| Standard | one stroke end to end, eased, springy | an even, endless orbit |
+| Ping-pong | there and back | a lap one way, then back |
+| Symmetric | fades in at the bottom centre, one stroke up each side | bottom centre to the top, meeting there |
+| Converge | a stroke from each end, meeting at the bottom | top centre to the bottom |
+| Breathing | the whole outline brightens and dims | the same |
+| Wave | a long soft band over a faintly lit edge | the same, looping |
 
 <img src="docs/img/glow.gif" width="680" alt="The collapsed island with a thin glow running along its edge: orange for Claude, then white, then violet and cyan for an agent">
 
