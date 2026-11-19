@@ -403,12 +403,12 @@
 }
 #urlbar:not([focused], [open]):not(:hover) {
   --dock-field-h: 20px;
-  --dock-pad-y: 0px;
+  --dock-pad-y: 4px;          /* lifts the text off the window's rounded bottom edge */
   --dock-r-out: 12px;
 }
 #urlbar, #urlbar[popover-open] {
   padding: var(--dock-pad-y) 8px var(--dock-pad-y) !important;
 }
-#urlbar:not([focused], [open]):not(:hover) { padding-top: 1px !important; }
+#urlbar:not([focused], [open]):not(:hover) { padding-top: 0 !important; }
 #urlbar > .urlbar-input-container { height: var(--dock-field-h) !important; }
 #urlbar:not([focused], [open]):not(:hover) #panacea-dock-host { padding-inline: 10px; font-size: 0.92em; }
