@@ -1,0 +1,181 @@
+/* Panacea for Zen: near-black, greys and white, one red accent (#d71921).
+ * One palette, five layers, each with one job:
+ *   --p0 frame    window, sidebar, toolbar (darkest, like the island)
+ *   --p1 page     the page area and new-tab page: a card set into the frame
+ *   --p2 field    url bar, search fields, Essentials tiles, selected tab
+ *   --p3 popup    menus, panels, the url bar's dropdown
+ *   --p4 hover    hover / pressed on top of any layer
+ * Overrides Zen's per-Space gradient (set inline, so !important wins).
+ * Imported from chrome/userChrome.css; Zen loads it at start. To get Zen's own
+ * colours back, comment out that @import line.
+ */
+:root {
+  --p0: #050505;
+  --p1: #0e0e0e;
+  --p2: #161616;
+  --p3: #131313;
+  --p4: #212121;
+  --p-line: #262626;        /* borders, separators */
+  --p-line-soft: #1a1a1a;
+  --p-fg: #ececec;          /* text */
+  --p-dim: #8c8c8c;         /* secondary text, placeholders */
+  --p-accent: #d71921;      /* focus, selection, the one colour */
+  --p-accent-soft: color-mix(in srgb, #d71921 22%, transparent);
+
+  color-scheme: dark !important;
+  accent-color: var(--p-accent) !important;
+
+  /* Zen */
+  --zen-main-browser-background: var(--p0) !important;
+  --zen-main-browser-background-toolbar: var(--p0) !important;
+  --zen-themed-toolbar-bg: var(--p0) !important;
+  --zen-themed-toolbar-bg-transparent: var(--p0) !important;
+  --zen-branding-bg: var(--p0) !important;
+  --zen-primary-color: var(--p-accent) !important;
+  --zen-dialog-background: var(--p3) !important;
+  --zen-colors-primary: var(--p2) !important;
+  --zen-colors-secondary: var(--p4) !important;
+  --zen-colors-tertiary: var(--p1) !important;
+  --zen-colors-hover-bg: var(--p4) !important;
+  --zen-colors-primary-foreground: var(--p-fg) !important;
+  --zen-colors-border: var(--p-line) !important;
+  --zen-colors-border-contrast: var(--p-line) !important;
+  --zen-colors-input-bg: var(--p2) !important;
+  --zen-urlbar-background: var(--p2) !important;
+
+  /* Firefox: toolbars and fields */
+  --toolbox-bgcolor: var(--p0) !important;
+  --toolbox-textcolor: var(--p-fg) !important;
+  --toolbar-bgcolor: var(--p0) !important;
+  --toolbar-color: var(--p-fg) !important;
+  --toolbar-field-background-color: var(--p2) !important;
+  --toolbar-field-focus-background-color: var(--p2) !important;
+  --toolbar-field-color: var(--p-fg) !important;
+  --toolbar-field-focus-color: var(--p-fg) !important;
+  --toolbar-field-border-color: var(--p-line-soft) !important;
+  --toolbar-field-focus-border-color: var(--p-accent) !important;
+  --urlbar-box-bgcolor: var(--p2) !important;
+  --urlbar-box-hover-bgcolor: var(--p4) !important;
+  --sidebar-background-color: var(--p0) !important;
+  --focus-outline-color: var(--p-accent) !important;
+  --button-bgcolor: var(--p2) !important;
+  --button-hover-bgcolor: var(--p4) !important;
+  --button-active-bgcolor: #2a2a2a !important;
+  --button-primary-bgcolor: var(--p-accent) !important;
+  --button-primary-hover-bgcolor: #e52a32 !important;
+  --button-primary-color: #fff !important;
+
+  /* tabs */
+  --tab-hover-background-color: var(--p-line-soft) !important;
+  --tab-selected-bgcolor: var(--p2) !important;
+
+  /* menus, panels, the url bar dropdown */
+  --arrowpanel-background: var(--p3) !important;
+  --arrowpanel-color: var(--p-fg) !important;
+  --arrowpanel-border-color: var(--p-line) !important;
+  --panel-background: var(--p3) !important;
+  --panel-color: var(--p-fg) !important;
+  --panel-border-color: var(--p-line) !important;
+  --panel-separator-color: var(--p-line) !important;
+  --panel-item-hover-bgcolor: var(--p4) !important;
+  --panel-item-active-bgcolor: #2a2a2a !important;
+  --menu-background-color: var(--p3) !important;
+  --menu-color: var(--p-fg) !important;
+  --menu-border-color: var(--p-line) !important;
+  --menu-disabled-color: #555 !important;
+  --menuitem-hover-background-color: var(--p4) !important;
+  --urlbarView-highlight-background: var(--p-accent-soft) !important;
+  --urlbarView-highlight-color: var(--p-fg) !important;
+  --urlbarView-hover-background: var(--p4) !important;
+  --urlbarView-separator-color: var(--p-line) !important;
+  --autocomplete-popup-highlight-background: var(--p-accent-soft) !important;
+  --autocomplete-popup-highlight-color: var(--p-fg) !important;
+}
+
+/* ---------------------------------------------------------------- frame */
+#zen-main-app-wrapper, #navigator-toolbox, #browser, #zen-appcontent-wrapper {
+  background-color: var(--p0) !important;
+}
+#zen-browser-background, .zen-browser-generic-background {
+  background: var(--p0) !important;
+}
+.zen-browser-grain { display: none !important; }   /* Zen's noise texture reads as grey */
+
+/* ---------------------------------------------------------------- page card */
+#tabbrowser-tabpanels {
+  background-color: transparent !important;          /* the frame shows in the corners */
+}
+.browserSidebarContainer {
+  background-color: var(--p1) !important;
+  border-radius: var(--zen-webview-border-radius, 16px) !important;
+  overflow: clip !important;
+  box-shadow: 0 0 0 1px var(--p-line-soft) !important;   /* hairline edge, follows the rounding */
+}
+.browserStack, browser[type="content"] {
+  background-color: var(--p1) !important;
+  border-radius: var(--zen-webview-border-radius, 16px) !important;
+}
+
+/* ---------------------------------------------------------------- url bar */
+.urlbar-background {
+  --zen-urlbar-background-base: var(--p2) !important;
+  --zen-urlbar-background-transparent: var(--p2) !important;
+  background-color: var(--p2) !important;
+  border: 1px solid var(--p-line-soft) !important;
+}
+#urlbar:hover:not([focused]) > .urlbar-background {
+  background-color: #1a1a1a !important;
+}
+#urlbar[focused="true"] > .urlbar-background {
+  border-color: color-mix(in srgb, var(--p-accent) 60%, transparent) !important;
+}
+#urlbar[open] > .urlbar-background {               /* the dropdown is a popup */
+  --zen-urlbar-background-base: var(--p3) !important;
+  --zen-urlbar-background-transparent: var(--p3) !important;
+  background-color: var(--p3) !important;
+  border-color: var(--p-line) !important;
+}
+#urlbar-input::placeholder, .searchbar-textbox::placeholder { color: var(--p-dim) !important; }
+
+/* ---------------------------------------------------------------- tabs */
+.tabbrowser-tab[zen-essential] > .tab-stack > .tab-background {
+  background-color: var(--p2) !important;
+}
+.tabbrowser-tab[zen-essential]:hover > .tab-stack > .tab-background {
+  background-color: var(--p4) !important;
+}
+.tabbrowser-tab:not([zen-essential]):hover > .tab-stack > .tab-background {
+  background-color: var(--p-line-soft) !important;
+}
+.tabbrowser-tab:not([zen-essential])[selected] > .tab-stack > .tab-background {
+  background-color: var(--p2) !important;
+}
+
+/* ---------------------------------------------------------------- menus and panels */
+menupopup, panel {
+  --panel-background: var(--p3) !important;
+  --panel-border-color: var(--p-line) !important;
+  --panel-color: var(--p-fg) !important;
+}
+menupopup > menuitem[_moz-menuactive], menupopup > menu[_moz-menuactive] {
+  background-color: var(--p4) !important;
+}
+menuseparator, toolbarseparator { border-color: var(--p-line) !important; }
+
+/* ---------------------------------------------------------------- url bar: stays put when opened
+ * Firefox's "popover" url bar jumps to the top of the toolbar row, widens and grows
+ * its background outwards when focused (cut off at the window edge). Keep the
+ * closed size and place; the results simply drop down under it.
+ * (zen.urlbar.behavior = "default" in user.js already stops Zen's floating bar.) */
+#urlbar[popover-open]:not([zen-floating-urlbar="true"]) {
+  --urlbar-background-overhang-open: 0px !important;
+  --urlbar-margin-block-start-open: calc((var(--urlbar-container-height) - var(--urlbar-height)) / 2) !important;
+  --urlbar-background-border-top-radius-open: var(--urlbar-background-border-radius) !important;
+  width: var(--urlbar-width) !important;
+
+  > .urlbar-input-container {
+    height: var(--urlbar-height) !important;
+    padding-block: 0 !important;
+    padding-inline: var(--urlbar-input-container-padding) !important;
+  }
+}

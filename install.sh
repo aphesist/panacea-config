@@ -56,12 +56,16 @@ else
     echo "  skipped: needs spicetify-cli and a writable /opt/spotify (see README)"
 fi
 
-say "Zen Browser: rounder web-content corners (userChrome.css)"
+say "Zen Browser: Panacea dark theme and rounder web-content corners (userChrome.css)"
 ZEN="$CFG/zen"; ZP=""
 if [ -f "$ZEN/installs.ini" ]; then ZP="$(sed -n 's/^Default=//p' "$ZEN/installs.ini" | head -1)"; fi
 if [ -n "$ZP" ] && [ -d "$ZEN/$ZP" ]; then
     mkdir -p "$ZEN/$ZP/chrome"
     grep -qs "zen-webview-border-radius" "$ZEN/$ZP/chrome/userChrome.css" || cat "$HERE/zen/userChrome.css" >> "$ZEN/$ZP/chrome/userChrome.css"
+    install -m 644 "$HERE/zen/panacea-dark.css" "$ZEN/$ZP/chrome/panacea-dark.css"
+    install -m 644 "$HERE/zen/userContent.css" "$ZEN/$ZP/chrome/userContent.css"   # new-tab/blank pages
+    grep -qs 'panacea-dark.css' "$ZEN/$ZP/chrome/userChrome.css" ||   # @import has to come first; edit in place
+        python3 -c 'import sys; p=sys.argv[1]; t=open(p).read(); f=open(p,"r+"); f.write("@import \"panacea-dark.css\";  /* Panacea */\n"+t); f.close()' "$ZEN/$ZP/chrome/userChrome.css"
     while IFS= read -r line; do   # add each pref that's missing
         key="$(printf '%s' "$line" | sed -n 's/^user_pref("\([^"]*\)".*/\1/p')"
         [ -n "$key" ] && ! grep -qsF "\"$key\"" "$ZEN/$ZP/user.js" && printf '%s\n' "$line" >> "$ZEN/$ZP/user.js"

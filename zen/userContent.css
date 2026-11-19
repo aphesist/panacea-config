@@ -1,0 +1,6 @@
+/* Panacea: Zen's empty and new-tab pages in the page-card shade (--p1 of
+   panacea-dark.css). Other blank pages: browser.display.background_color.dark (user.js) */
+@-moz-document url("about:newtab"), url("about:home"), url("about:blank"),
+               url("about:privatebrowsing"), url-prefix("about:zen") {
+  :root, body { background-color: #0e0e0e !important; }
+}
