@@ -12,7 +12,7 @@ back on its own). Re-run by panacea-portal-patch.path after Panacea updates.
 import os, sys
 
 D = os.path.expanduser("~/.config/panacea")
-VERSION = "v12"
+VERSION = "v16"
 TAG_PREFIX = "// panacea-local portal patch "
 TAG = TAG_PREFIX + VERSION
 
@@ -244,12 +244,12 @@ SHELL = [
      '            property bool   glowClaude: true\n'
      '            property bool   glowVpn: true\n'
      '            property bool   glowAgents: true\n'
-     '            property string glowStyle: "loop"\n'
+     '            property string glowStyle: "standard"\n'
      '            property int    glowLap: 1800\n'
      '            property int    glowIntensity: 70\n'),
     ('reduceMotion: false, animMove: 230, animFade: 200, animHover: 150, animBounce: 0,',
      'reduceMotion: false, animMove: 230, animFade: 200, animHover: 150, animBounce: 0,\n'
-     '        glowEnabled: true, glowClaude: true, glowVpn: true, glowAgents: true, glowStyle: "loop", glowLap: 1800, glowIntensity: 70,'),
+     '        glowEnabled: true, glowClaude: true, glowVpn: true, glowAgents: true, glowStyle: "standard", glowLap: 1800, glowIntensity: 70,'),
     ('    property string vpnQuickAction: ""\n',
      '    property string vpnQuickAction: ""\n'
      '    // ' + TAG + ': who lights the island edge right now. Sources, strongest first:\n'
@@ -295,7 +295,7 @@ SHELL = [
      '        z: 1000; enabled: false\n'
      '        active: root.glowNow !== null && !root.wallsOpen && capsule.visible\n'
      '        colors: root.glowNow || root.glowLast\n'
-     '        style: root.cfg.glowStyle === "bounce" ? "bounce" : "loop"\n'
+     '        style: ({ loop: "standard", sweep: "standard", bounce: "pingpong" })[root.cfg.glowStyle] || root.cfg.glowStyle\n'
      '        lap: root.cfg.glowLap; intensity: root.cfg.glowIntensity / 100\n'
      '        still: root.noMotion\n'
      '        cx: capsule.x + root.dragDX; cy: capsule.y + root.dragDY; cw: capsule.width; ch: capsule.height\n'
@@ -391,6 +391,47 @@ SHELL = [
 """),
 ]
 
+
+# ---- Claude tools (v13, v14: auto-start, v16: where its window opens): settings for the browser (Claudezilla) and "Ask Claude about this",
+# two configurable shortcuts, and the IPC call the hotkey uses (scripts/custom/ask_claude.sh).
+# The Settings > Claude page and the Keys rows come from claude-tools-patch.py.
+SHELL += [
+    ('            property string bind_pillVault: "SUPER + SHIFT + P"\n',
+     '            property string bind_pillVault: "SUPER + SHIFT + P"\n'
+     '            // ' + TAG + ': Claude tools (read by bridge.py, ask_claude.sh, hypr/custom/keybindings.lua)\n'
+     '            property string bind_claudeChat: "SUPER + C"\n'
+     '            property string bind_askClaude: "SUPER + SHIFT + C"\n'
+     '            property bool   claudeBrowser: true\n'
+     '            property string claudeBrowserAsk: "actions"   // actions | all | none\n'
+     '            property bool   claudeBrowserAutostart: true   // start Claude\'s Zen (claude-zen-sandbox) when needed\n'
+     '            property string claudeBrowserPlace: "desktop"  // desktop (workspace 10) | hidden | current\n'
+     '            property string askSource: "auto"             // auto | region | selection\n'
+     '            property string askThen: "wait"               // wait | explain\n'),
+    ('        pillVault:      "SUPER + SHIFT + P",\n',
+     '        pillVault:      "SUPER + SHIFT + P",\n'
+     '        claudeChat:     "SUPER + C",            ' + TAG + '\n'
+     '        askClaude:      "SUPER + SHIFT + C",\n'),
+    ('        clock12: false, clockSeconds: false, clockWeekday: true,\n',
+     '        claudeBrowser: true, claudeBrowserAsk: "actions", claudeBrowserAutostart: true, claudeBrowserPlace: "desktop", askSource: "auto", askThen: "wait",   ' + TAG + '\n'
+     '        clock12: false, clockSeconds: false, clockWeekday: true,\n'),
+    ('    property string chatDraft: ""          // ...and its unsent text\n',
+     '    property string chatDraft: ""          // ...and its unsent text\n'
+     '    property bool chatAskSend: false       // "Ask Claude about this": send it right away\n'
+     '    property int chatAskRev: 0             // bumped per request, so an open chat takes it too\n'),
+    ('        function chat(): void { root.page = "chat"; root.expanded = true; root.holdOpen = true; }\n',
+     '        function chat(): void { root.page = "chat"; root.expanded = true; root.holdOpen = true; }\n'
+     '        // ' + TAG + ': "Ask Claude about this": {"files": [...], "draft": "...", "send": bool}\n'
+     '        function askAbout(spec: string): void {\n'
+     '            var s; try { s = JSON.parse(spec); } catch (e) { return; }\n'
+     '            if (root.islandPick) root.endIslandPick(false, [], true);\n'
+     '            root.pendingChatAttach = (root.pendingChatAttach || []).concat(s.files || []);\n'
+     '            if (s.draft) root.chatDraft = String(s.draft);\n'
+     '            root.chatAskSend = !!s.send;\n'
+     '            root.chatAskRev++;\n'
+     '            root.page = "chat"; root.expanded = true; root.holdOpen = true;\n'
+     '        }\n'),
+]
+
 FILES = [
     ("    signal filePicked(string path)\n",
      "    signal filePicked(string path)\n"
@@ -441,12 +482,20 @@ MOTION = [
             on: page.sys.cfg.glowAgents
             onToggled: value => { page.sys.cfg.glowAgents = value; page.sys.saveCfg(); }
         }
-        SetSelect {
+        SetPick {
             sys: page.sys
             visible: page.sys.cfg.glowEnabled
-            label: "Path"
-            value: page.sys.cfg.glowStyle === "bounce" ? "bounce" : "loop"
-            options: [{ id: "loop", text: "Run end to end" }, { id: "bounce", text: "Back and forth" }]
+            label: "Animation"
+            visibleRows: 6
+            value: ({ loop: "standard", sweep: "standard", bounce: "pingpong" })[page.sys.cfg.glowStyle] || page.sys.cfg.glowStyle
+            options: [
+                { id: "standard",  text: "Standard: one stroke, end to end" },
+                { id: "pingpong",  text: "Ping-pong: there and back" },
+                { id: "symmetric", text: "Symmetric: from the bottom, up both sides" },
+                { id: "converge",  text: "Converge: from both ends to the bottom" },
+                { id: "breathing", text: "Breathing: the whole outline" },
+                { id: "wave",      text: "Wave: a soft band flowing round" }
+            ]
             onPicked: id => { page.sys.cfg.glowStyle = id; page.sys.saveCfg(); }
         }
         SetSlider {

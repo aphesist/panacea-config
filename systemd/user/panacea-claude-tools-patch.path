@@ -1,0 +1,10 @@
+[Unit]
+Description=Watch Panacea's SettingsView.qml and SetKeys.qml for updates
+
+[Path]
+PathChanged=%h/.config/panacea/SettingsView.qml
+PathChanged=%h/.config/panacea/SetKeys.qml
+Unit=panacea-claude-tools-patch.service
+
+[Install]
+WantedBy=default.target

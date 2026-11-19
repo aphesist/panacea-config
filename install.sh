@@ -31,6 +31,7 @@ say "Panacea vault <-> Proton Pass bridge, fish, foot"
 put panacea/scripts/custom/vault-proton.py "$CFG/panacea/scripts/custom/vault-proton.py"
 put panacea/scripts/custom/mullvad_control.py "$CFG/panacea/scripts/custom/mullvad_control.py"
 put panacea/scripts/custom/taskman.py "$CFG/panacea/scripts/custom/taskman.py"
+put panacea/scripts/custom/ask_claude.sh "$CFG/panacea/scripts/custom/ask_claude.sh"
 put fish/custom/proton-pass.fish "$CFG/fish/custom/proton-pass.fish"
 put foot/custom.ini "$CFG/foot/custom.ini"
 mkdir -p "$CFG/environment.d"
@@ -119,6 +120,10 @@ python3 -I "$CFG/hypr/custom/bin/auth-patch.py" || echo "  password prompt patch
 say "Touchpad: three-finger swipe up/down = volume"
 systemctl --user enable --now panacea-gesture-patch.path
 python3 -I "$CFG/hypr/custom/bin/gesture-patch.py" || echo "  gesture patch skipped - Panacea's swipes stay as they were"
+
+say "Claude tools: Settings > Claude page and the chat / ask-about-this shortcuts"
+systemctl --user enable --now panacea-claude-tools-patch.path
+python3 -I "$CFG/hypr/custom/bin/claude-tools-patch.py" || echo "  Claude settings patch skipped - the shortcuts still work with their defaults"
 
 say "Patching lock.qml now (also re-done before every lock)"
 python3 -I "$CFG/hypr/custom/bin/lock-patch.py" || echo "  lock patch skipped (see message above)"

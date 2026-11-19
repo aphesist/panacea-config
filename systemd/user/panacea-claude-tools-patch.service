@@ -1,0 +1,6 @@
+[Unit]
+Description=Re-apply the Claude settings page and shortcuts to Panacea's settings
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I %h/.config/hypr/custom/bin/claude-tools-patch.py

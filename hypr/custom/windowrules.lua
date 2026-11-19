@@ -15,3 +15,6 @@ hl.window_rule({
     float = false,
     workspace = "unset",
 })
+
+-- Claude's Zen on its own hidden workspace (claude-zen-sandbox)
+pcall(require, "custom.zen-claude")
