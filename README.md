@@ -21,8 +21,8 @@
 
 Panacea keeps a handful of folders untouched across updates:
 `hypr/custom/`, `fish/custom/`, `foot/custom.ini` and `panacea/scripts/custom/`.
-Everything here lives in those folders. Two Panacea files are patched in place,
-the lock screen and the vault script. Their patchers are idempotent,
+Everything here lives in those folders. A few Panacea files are patched in place:
+the lock screen, the vault script and the file manager (for the island file picker). Their patchers are idempotent,
 all-or-nothing, and re-run themselves whenever an update replaces the file.
 
 ## Screenshots
@@ -66,6 +66,7 @@ Claude subscription.
 | | Window corners 16 px with the same squircle curve as the island | `general.lua` |
 | | Touchpad right-click by pressing the bottom-right corner (as well as a two-finger tap), instead of Panacea's two-finger-press-only *clickfinger* | `general.lua` |
 | | Spotify opens as a normal window (Panacea sends it to the hidden scratchpad) | `windowrules.lua` |
+| **File picker** | One picker, inside the island. Every app's Open/Save dialog (browsers, Electron apps, GTK apps) and the chat's paperclip morph the island into its own file manager in picker mode, with Cancel/Open, a filename box for Save and "Use this folder" for folder picks. Before, apps got a white GTK dialog and the paperclip opened a window that Hyprland tiled behind the island. Falls back to the GTK dialog if Panacea can't answer | `bin/panacea-portal.py`, `bin/portal-patch.py`, `portal/` |
 | **Spotify** | A Spicetify theme in Panacea's *Nothing* palette: pure black, white, one red; JetBrains Mono; rounded flat panels | `spicetify/Themes/Panacea` |
 | | Runs natively on Wayland, so it follows the display scale (under XWayland with `force_zero_scaling` it was drawn at 1×, tiny); Vesktop (Discord) too | `spotify/spotify-flags.conf`, `electron/vesktop-flags.conf` |
 | **Claude desktop** | Uses GNOME Keyring for its sign-in (Electron doesn't recognise Hyprland and fell back to "no keyring", so you had to sign in every launch) | `electron/claude-desktop-flags.conf` |
@@ -129,10 +130,11 @@ overwriting it, then enables the user units and patches the lock screen.
 ## How patches survive updates
 
 ```
-Panacea update replaces lock.qml / vault.sh
+Panacea update replaces lock.qml / vault.sh / shell.qml
         │
-        ├─ lock.qml  → bin/panacea-lock re-runs lock-patch.py before every lock
-        └─ vault.sh  → panacea-vault-patch.path notices the change → vault-patch.py
+        ├─ lock.qml   → bin/panacea-lock re-runs lock-patch.py before every lock
+        ├─ vault.sh   → panacea-vault-patch.path notices the change → vault-patch.py
+        └─ shell.qml, FilesView.qml → panacea-portal-patch.path → portal-patch.py
 ```
 
 Each patcher searches for exact anchors in Panacea's code. If an update moved

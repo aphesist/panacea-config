@@ -1,0 +1,10 @@
+[Unit]
+Description=Watch Panacea's shell.qml and FilesView.qml for updates
+
+[Path]
+PathChanged=%h/.config/panacea/shell.qml
+PathChanged=%h/.config/panacea/FilesView.qml
+Unit=panacea-portal-patch.service
+
+[Install]
+WantedBy=default.target

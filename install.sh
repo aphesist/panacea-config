@@ -58,7 +58,10 @@ if [ -f "$ZEN/installs.ini" ]; then ZP="$(sed -n 's/^Default=//p' "$ZEN/installs
 if [ -n "$ZP" ] && [ -d "$ZEN/$ZP" ]; then
     mkdir -p "$ZEN/$ZP/chrome"
     grep -qs "zen-webview-border-radius" "$ZEN/$ZP/chrome/userChrome.css" || cat "$HERE/zen/userChrome.css" >> "$ZEN/$ZP/chrome/userChrome.css"
-    grep -qs "legacyUserProfileCustomizations" "$ZEN/$ZP/user.js" || cat "$HERE/zen/user.js" >> "$ZEN/$ZP/user.js"
+    while IFS= read -r line; do   # add each pref that's missing
+        key="$(printf '%s' "$line" | sed -n 's/^user_pref("\([^"]*\)".*/\1/p')"
+        [ -n "$key" ] && ! grep -qsF "\"$key\"" "$ZEN/$ZP/user.js" && printf '%s\n' "$line" >> "$ZEN/$ZP/user.js"
+    done < "$HERE/zen/user.js"
     echo "  done - restart Zen to see it"
 else
     echo "  skipped: open Zen once to create its profile, then re-run"
@@ -82,13 +85,23 @@ S="$CFG/panacea/settings.json"
 mkdir -p "$BK"; cp -a "$S" "$BK/settings.json"
 jq -s '.[0] * .[1]' "$S" "$HERE/settings.overrides.json" > "$S.new" && cat "$S.new" > "$S" && rm "$S.new"
 
-say "systemd user units (splash fix, vault re-patch on Panacea updates)"
+say "systemd user units (splash fix, re-patching after Panacea updates)"
 for f in "$HERE"/systemd/user/*; do put "${f#$HERE/}" "$CFG/systemd/user/$(basename "$f")"; done
 systemctl --user daemon-reload
 systemctl --user enable --now hyprpaper-nosplash.path panacea-vault-patch.path
 systemctl --user start hyprpaper-nosplash.service panacea-vault-patch.service || true
 
 python3 -I "$CFG/hypr/custom/bin/vault-patch.py" || true
+
+say "Island file picker for every app (file-chooser portal backend)"
+DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
+put portal/panacea.portal "$DATA/xdg-desktop-portal/portals/panacea.portal"
+put portal/org.freedesktop.impl.portal.desktop.panacea.service "$DATA/dbus-1/services/org.freedesktop.impl.portal.desktop.panacea.service"
+put portal/hyprland-portals.conf "$CFG/xdg-desktop-portal/hyprland-portals.conf"
+systemctl --user enable --now panacea-portal-patch.path
+python3 -I "$CFG/hypr/custom/bin/portal-patch.py" || echo "  island picker patch skipped - apps keep the GTK dialog"
+busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus ReloadConfig >/dev/null 2>&1 || true
+systemctl --user try-restart xdg-desktop-portal || true
 
 say "Patching lock.qml now (also re-done before every lock)"
 python3 -I "$CFG/hypr/custom/bin/lock-patch.py" || echo "  lock patch skipped (see message above)"
