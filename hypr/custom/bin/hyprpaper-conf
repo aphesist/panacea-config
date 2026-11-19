@@ -1,0 +1,20 @@
+#!/bin/sh
+# hyprpaper's own config, written just before it starts (panacea-wallpaper.service).
+# Panacea rewrites ~/.config/hypr/hyprpaper.conf at login (empty it, then write) at
+# the same moment hyprpaper starts; hyprpaper could read it empty and show its splash
+# quote at the bottom of the screen. This file is never touched by Panacea, so there
+# is no race. The wallpaper comes from Panacea's saved choice (wallpaper.conf); later
+# changes still apply live (switch_theme.sh talks to hyprpaper over IPC).
+OUT="$HOME/.config/hypr/custom/hyprpaper.conf"
+WALL=$(grep -m1 '^\$wallpaper' "$HOME/.config/hypr/wallpaper.conf" 2>/dev/null | cut -d= -f2- | sed 's/^ *//; s/ *$//')
+[ -f "$WALL" ] || WALL="$HOME/Pictures/Wallpapers/wallpaper.png"
+cat > "$OUT.tmp" <<CONF
+wallpaper {
+    monitor =
+    path = $WALL
+    fit_mode = cover
+}
+ipc = on
+splash_opacity = 0
+CONF
+mv "$OUT.tmp" "$OUT"

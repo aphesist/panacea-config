@@ -12,7 +12,7 @@ back on its own). Re-run by panacea-portal-patch.path after Panacea updates.
 import os, sys
 
 D = os.path.expanduser("~/.config/panacea")
-VERSION = "v6"
+VERSION = "v12"
 TAG_PREFIX = "// panacea-local portal patch "
 TAG = TAG_PREFIX + VERSION
 
@@ -160,6 +160,158 @@ SHELL = [
                                 sourceSize: Qt.size(68, 68); fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true
                                 source: "file://" + Quickshell.env("HOME") + "/.config/panacea-claude/claude-logo.svg"
                                 opacity: root.page === modelData.page ? 1 : 0.55 }"""),
+    # tab switches ease instead of jumping: the active tab widens while its fill fades in,
+    # the old one narrows and fades, the label fades (content stays put: the icon keeps
+    # the same inset either way, so nothing slides under it)
+    ("""                    width: root.page === modelData.page ? tabText.implicitWidth + 48 : 40
+                    height: 34; radius: 17
+                    color: root.page === modelData.page ? Qt.rgba(1,1,1,0.12) : "transparent"
+                    Row {
+                        anchors.centerIn: parent; spacing: 8""", """                    width: root.page === modelData.page ? tabText.implicitWidth + 48 : 40
+                    height: 34; radius: 17; clip: true   // """ + TAG + """: animated tabs
+                    color: root.page === modelData.page ? Qt.rgba(1,1,1,0.12) : Qt.rgba(1,1,1,0)
+                    Behavior on width { enabled: !root.noMotion; NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
+                    Behavior on color { ColorAnimation { duration: 240; easing.type: Easing.OutCubic } }
+                    Row {
+                        anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                        anchors.leftMargin: (40 - (children.length ? children[0].width : 19)) / 2 + (modelData.page === "chat" ? 1 : 0)
+                        spacing: 8"""),
+    ("visible: root.page === modelData.page; text: modelData.title;",
+     "opacity: root.page === modelData.page ? 1 : 0; Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }\n                               text: modelData.title;"),
+    # the page itself slides in from the side of the tab you picked, fading in
+    ("            onLoaded: if (item) item.forceActiveFocus()\n",
+     """            onLoaded: { if (item) item.forceActiveFocus(); pageEnter(); }   """ + TAG + """: page slide
+            readonly property var tabRank: ({ main: 0, chat: 1, vpn: 2 })
+            property string lastTabPage: ""
+            onActiveChanged: if (!active) lastTabPage = ""
+            transform: Translate { id: pageSlide }
+            NumberAnimation { id: pageSlideAnim; target: pageSlide; property: "x"; to: 0; duration: 300; easing.type: Easing.OutCubic }
+            NumberAnimation { id: pageFadeAnim; property: "opacity"; from: 0; to: 1; duration: 240; easing.type: Easing.OutCubic }
+            function pageEnter() {
+                var r = tabRank[root.page], q = tabRank[lastTabPage];
+                if (item && r !== undefined && q !== undefined && r !== q && !root.noMotion) {
+                    pageSlide.x = (r > q ? 1 : -1) * 24; pageSlideAnim.restart();
+                    item.opacity = 0; pageFadeAnim.target = item; pageFadeAnim.restart();
+                }
+                lastTabPage = r !== undefined ? root.page : "";
+            }
+"""),
+    # Mullvad: its own page (MullvadView.qml, from vpn-patch.py), no notification after
+    # every toggle (the island shows the state), the country button opens the page
+    # (right-click toggles), and the button shows the Mullvad exit country
+    ('    property string vpnCountryName: ""\n',
+     '    property string vpnCountryName: ""\n'
+     '    readonly property bool vpnIsMullvad: /mullvad/i.test(cfg.vpnPreferredClient || "")   ' + TAG + ': Mullvad page\n'
+     '    property bool vpnClassic: false   // "Change VPN client" shows Panacea\'s own page\n'
+     '    Connections { target: root; function onPageChanged() { if (root.page !== "vpn") root.vpnClassic = false; } }\n'),
+    ('            if (d.clientState) { root.vpnClientState = d.clientState; root.vpnConnected = d.clientState === "connected"; }\n            else if (!root.cfg.vpnPreferredClient)',
+     '            if (d.clientState) { root.vpnClientState = d.clientState; root.vpnConnected = d.clientState === "connected"; }\n'
+     '            if (d.countryCode) { root.vpnCountry = d.countryCode; root.vpnCountryName = d.country || ""; }\n'
+     '            else if (root.vpnIsMullvad && d.clientState === "disconnected" && root.vpnCountry !== "--" && !vpnGeo.running && !vpnGeoDelay.running) vpnGeoDelay.restart();\n'
+     '            if (d.clientState) {}\n            else if (!root.cfg.vpnPreferredClient)'),
+    ('                root.announceVpnChange(d.action || root.vpnQuickAction);\n',
+     '                if (root.vpnIsMullvad) root.refreshVpnStatus(); else root.announceVpnChange(d.action || root.vpnQuickAction);\n'),
+    ('if (mouse.button === Qt.RightButton || (!root.cfg.vpnPreferred && !root.cfg.vpnPreferredClient)) { root.page = "vpn"; root.holdOpen = true; }\n                    else root.togglePreferredVpn();',
+     'if (root.vpnIsMullvad ? mouse.button !== Qt.RightButton : (mouse.button === Qt.RightButton || (!root.cfg.vpnPreferred && !root.cfg.vpnPreferredClient))) { root.page = "vpn"; root.holdOpen = true; }\n                    else root.togglePreferredVpn();'),
+    ('        Component { id: vpnComp; VpnView { sys: root } }\n',
+     '        Component { id: vpnComp; Loader {\n'
+     '            function goBack() { return !!(item && typeof item.goBack === "function" && item.goBack()); }\n'
+     '            onLoaded: item.forceActiveFocus()\n'
+     '            sourceComponent: root.vpnIsMullvad && !root.vpnClassic && Qt.resolvedUrl("MullvadView.qml") ? mullvadPage : classicVpnPage } }\n'
+     '        Component { id: mullvadPage; MullvadView { sys: root } }\n'
+     '        Component { id: classicVpnPage; VpnView { sys: root } }\n'),
+    # the task manager (TasksView.qml): a large centred page like the explorer, opened by
+    # `qs ipc call pill tasks` (Super+Shift+Esc)
+    ('                     || page === "files" || page === "media")',
+     '                     || page === "files" || page === "media" || page === "tasks")   ' + TAG + ': task manager'),
+    ('        var want = page === "files" ? Math.round((screen ? screen.width : 1920) * 0.78)\n',
+     '        var want = page === "tasks" ? Math.round((screen ? screen.width : 1920) * 0.66)   ' + TAG + '\n'
+     '                 : page === "files" ? Math.round((screen ? screen.width : 1920) * 0.78)\n'),
+    ('                           : root.page === "files"    ? filesComp\n',
+     '                           : root.page === "tasks"    ? tasksComp   ' + TAG + '\n'
+     '                           : root.page === "files"    ? filesComp\n'),
+    ('        Component { id: chatComp; ChatView { sys: root } }\n',
+     '        Component { id: chatComp; ChatView { sys: root } }\n'
+     '        Component { id: tasksComp; TasksView { sys: root } }   ' + TAG + '\n'),
+    ('        function files(): void { root.togglePage("files"); }\n',
+     '        function files(): void { root.togglePage("files"); }\n'
+     '        function tasks(): void { root.togglePage("tasks"); }   ' + TAG + ': task manager\n'),
+    # ---- the activity glow (IslandGlow.qml): settings, sources, the layer, the IPC calls
+    ('            property int    animBounce: 79     // перелёт осциллятора, %\n',
+     '            property int    animBounce: 79     // перелёт осциллятора, %\n'
+     '            // ' + TAG + ': activity glow along the island edge\n'
+     '            property bool   glowEnabled: true\n'
+     '            property bool   glowClaude: true\n'
+     '            property bool   glowVpn: true\n'
+     '            property bool   glowAgents: true\n'
+     '            property string glowStyle: "loop"\n'
+     '            property int    glowLap: 1800\n'
+     '            property int    glowIntensity: 70\n'),
+    ('reduceMotion: false, animMove: 230, animFade: 200, animHover: 150, animBounce: 0,',
+     'reduceMotion: false, animMove: 230, animFade: 200, animHover: 150, animBounce: 0,\n'
+     '        glowEnabled: true, glowClaude: true, glowVpn: true, glowAgents: true, glowStyle: "loop", glowLap: 1800, glowIntensity: 70,'),
+    ('    property string vpnQuickAction: ""\n',
+     '    property string vpnQuickAction: ""\n'
+     '    // ' + TAG + ': who lights the island edge right now. Sources, strongest first:\n'
+     '    // agents that asked (glow IPC / panacea-glow), Claude while it works, the VPN while it connects.\n'
+     '    property var glowExternal: ({})      // id -> { colors: [...], at: ms, until: ms }\n'
+     '    property bool claudeWorking: false\n'
+     '    readonly property var claudeGlowColors: ["#f4b28f", "#d97757", "#a8492a"]\n'
+     '    FileView { id: glowClaudeFile; path: Quickshell.env("HOME") + "/.cache/panacea-claude/live.json"; printErrors: false\n'
+     '        onLoaded: { try { root.claudeWorking = !!JSON.parse(text()).busy; } catch (e) {} } }\n'
+     '    Timer { interval: 900; repeat: true; triggeredOnStart: true; running: root.cfg.glowEnabled && root.cfg.glowClaude\n'
+     '            onTriggered: glowClaudeFile.reload(); onRunningChanged: if (!running) root.claudeWorking = false }\n'
+     '    Timer { interval: 5000; repeat: true; running: Object.keys(root.glowExternal).length > 0\n'
+     '            onTriggered: { var now = Date.now(), e = {}, changed = false;\n'
+     '                           for (var k in root.glowExternal) { if (root.glowExternal[k].until > now) e[k] = root.glowExternal[k]; else changed = true; }\n'
+     '                           if (changed) root.glowExternal = e; } }\n'
+     '    readonly property var glowNow: {\n'
+     '        if (!cfg.glowEnabled) return null;\n'
+     '        if (cfg.glowAgents) {\n'
+     '            var best = null;\n'
+     '            for (var k in glowExternal) if (!best || glowExternal[k].at > best.at) best = glowExternal[k];\n'
+     '            if (best) return best.colors;\n'
+     '        }\n'
+     '        if (cfg.glowClaude && claudeWorking) return claudeGlowColors;\n'
+     '        if (cfg.glowVpn && vpnBusy) return ["#ffffff", "#e8e8e8", "#bdbdbd"];\n'
+     '        return null;\n'
+     '    }\n'
+     '    property var glowLast: ["#ffffff"]   // keeps its colour while it fades out\n'
+     '    onGlowNowChanged: if (glowNow) glowLast = glowNow\n'
+     '    function glowStart(id, colors, ttl) {\n'
+     '        var list = String(colors || "").split(/[ ,]+/).filter(function (c) { return /^#?[0-9a-fA-F]{6}$/.test(c); })\n'
+     '                       .map(function (c) { return c.charAt(0) === "#" ? c : "#" + c; }).slice(0, 3);\n'
+     '        if (!list.length) list = ["#ffffff"];\n'
+     '        var e = Object.assign({}, glowExternal);\n'
+     '        e[String(id || "agent")] = { colors: list, at: Date.now(), until: Date.now() + Math.max(5, ttl || 900) * 1000 };\n'
+     '        glowExternal = e;\n'
+     '    }\n'
+     '    function glowStop(id) { var e = Object.assign({}, glowExternal); delete e[String(id)]; glowExternal = e; }\n'),
+    # the glow sits on the island's outline (not inside it): beside the flare corners, above the island
+    ('        opacity: root.cornersOn ? 1 : 0\n        Behavior on opacity { NumberAnimation { duration: root.animFast } }\n    }\n}\n',
+     '        opacity: root.cornersOn ? 1 : 0\n        Behavior on opacity { NumberAnimation { duration: root.animFast } }\n    }\n\n'
+     '    // ' + TAG + ': the activity glow, on the island\'s exact outline (flares included)\n'
+     '    IslandGlow {\n'
+     '        z: 1000; enabled: false\n'
+     '        active: root.glowNow !== null && !root.wallsOpen && capsule.visible\n'
+     '        colors: root.glowNow || root.glowLast\n'
+     '        style: root.cfg.glowStyle === "bounce" ? "bounce" : "loop"\n'
+     '        lap: root.cfg.glowLap; intensity: root.cfg.glowIntensity / 100\n'
+     '        still: root.noMotion\n'
+     '        cx: capsule.x + root.dragDX; cy: capsule.y + root.dragDY; cw: capsule.width; ch: capsule.height\n'
+     '        rTL: capsule.topLeftRadius; rTR: capsule.topRightRadius\n'
+     '        rBL: capsule.bottomLeftRadius; rBR: capsule.bottomRightRadius\n'
+     '        attached: root.pillAtTop && !root.pillSide && root.cornersOn && !root.settingsMode\n'
+     '        flare: root.cornerR\n'
+     '    }\n}\n'),
+    ('                anchors.fill: parent; anchors.margins: -3; visible: root.vpnBusy\n',
+     '                anchors.fill: parent; anchors.margins: -3; visible: root.vpnBusy && !(root.cfg.glowEnabled && root.cfg.glowVpn)   ' + TAG + ': the glow shows it\n'),
+    ('        function files(): void { root.togglePage("files"); }\n',
+     '        function files(): void { root.togglePage("files"); }\n'
+     '        // ' + TAG + ': light the island edge for an agent: glow <id> "<#hex,#hex,#hex>", glowStop <id>\n'
+     '        function glow(id: string, colors: string): void { root.glowStart(id, colors, 900); }\n'
+     '        function glowStop(id: string): void { root.glowStop(id); }\n'
+     '        function vpn(): void { root.togglePage("vpn"); }   // the VPN / Mullvad page\n'),
     # the old windowed chat picker is never opened any more
     ("    active: root.chatFilePickerOpen\n    FloatingWindow {\n    id: chatPickerWindow\n",
      "    active: false   " + TAG + ": replaced by the island picker\n    FloatingWindow {\n    id: chatPickerWindow\n"),
@@ -248,6 +400,84 @@ FILES = [
 ]
 
 
+MOTION = [
+    ("""    SetCard {
+        sys: page.sys
+
+        SetToggle {
+            sys: page.sys
+            label: page.sys.tr("Уменьшить анимацию")""", """    // """ + TAG + """: the activity glow along the island's edge (IslandGlow.qml)
+    SetCard {
+        sys: page.sys
+
+        SetToggle {
+            sys: page.sys
+            label: "Activity glow"
+            sub: "A light runs along the island's edge while something works, even when the island is closed."
+            on: page.sys.cfg.glowEnabled
+            onToggled: value => { page.sys.cfg.glowEnabled = value; page.sys.saveCfg(); }
+        }
+        SetToggle {
+            sys: page.sys
+            visible: page.sys.cfg.glowEnabled
+            label: "Claude"
+            sub: "Orange while Claude works in the island."
+            on: page.sys.cfg.glowClaude
+            onToggled: value => { page.sys.cfg.glowClaude = value; page.sys.saveCfg(); }
+        }
+        SetToggle {
+            sys: page.sys
+            visible: page.sys.cfg.glowEnabled
+            label: "VPN"
+            sub: "White while the VPN connects or disconnects, instead of the spinner."
+            on: page.sys.cfg.glowVpn
+            onToggled: value => { page.sys.cfg.glowVpn = value; page.sys.saveCfg(); }
+        }
+        SetToggle {
+            sys: page.sys
+            visible: page.sys.cfg.glowEnabled
+            label: "Apps and agents"
+            sub: "In their own colours, for anything that asks (panacea-glow)."
+            on: page.sys.cfg.glowAgents
+            onToggled: value => { page.sys.cfg.glowAgents = value; page.sys.saveCfg(); }
+        }
+        SetSelect {
+            sys: page.sys
+            visible: page.sys.cfg.glowEnabled
+            label: "Path"
+            value: page.sys.cfg.glowStyle === "bounce" ? "bounce" : "loop"
+            options: [{ id: "loop", text: "Run end to end" }, { id: "bounce", text: "Back and forth" }]
+            onPicked: id => { page.sys.cfg.glowStyle = id; page.sys.saveCfg(); }
+        }
+        SetSlider {
+            sys: page.sys
+            visible: page.sys.cfg.glowEnabled
+            label: "Speed (one lap)"
+            from: 700; to: 4000; step: 100
+            value: page.sys.cfg.glowLap
+            suffix: "ms"
+            onMoved: v => { page.sys.cfg.glowLap = v; page.sys.saveCfg(); }
+        }
+        SetSlider {
+            sys: page.sys
+            visible: page.sys.cfg.glowEnabled
+            label: "Intensity"
+            from: 20; to: 100; step: 5
+            value: page.sys.cfg.glowIntensity
+            suffix: "%"
+            onMoved: v => { page.sys.cfg.glowIntensity = v; page.sys.saveCfg(); }
+        }
+    }
+
+    SetCard {
+        sys: page.sys
+
+        SetToggle {
+            sys: page.sys
+            label: page.sys.tr("Уменьшить анимацию")"""),
+]
+
+
 def plan(path, repl):
     """-> (new text, pristine text to save or None), or None if an anchor is missing."""
     cur = open(path, encoding="utf-8").read()
@@ -279,7 +509,7 @@ def write(path, text):
 
 
 def main():
-    targets = [(os.path.join(D, "FilesView.qml"), FILES), (os.path.join(D, "shell.qml"), SHELL)]
+    targets = [(os.path.join(D, "FilesView.qml"), FILES), (os.path.join(D, "SetMotion.qml"), MOTION), (os.path.join(D, "shell.qml"), SHELL)]
     plans = []
     for path, repl in targets:
         p = plan(path, repl)
@@ -288,6 +518,15 @@ def main():
             return 2
         plans.append((path, p))
     changed = False
+    here = os.path.dirname(os.path.abspath(__file__))
+    for name in ("TasksView.qml", "TasksChart.qml", "IslandGlow.qml"):   # written first: shell.qml uses them
+        src = os.path.join(here, name)
+        if os.path.exists(src):
+            body = open(src, encoding="utf-8").read()
+            dst = os.path.join(D, name)
+            if not os.path.exists(dst) or open(dst, encoding="utf-8").read() != body:
+                write(dst, body)
+                changed = True
     for path, (out, pristine) in plans:   # FilesView first: shell.qml uses its new signal
         if pristine is not None:
             write(path + ".pristine", pristine)

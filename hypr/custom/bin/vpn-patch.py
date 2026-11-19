@@ -15,7 +15,7 @@ opens its app, as before). Re-run by panacea-vpn-patch.path after updates.
 import os, sys
 
 D = os.path.expanduser("~/.config/panacea")
-VERSION = "v1"
+VERSION = "v2"
 PY_PREFIX = "# panacea-local vpn patch "
 QML_PREFIX = "// panacea-local vpn patch "
 
@@ -35,7 +35,13 @@ VPN_VIEW = [
     ('subtitle: modelData.desktop.toLowerCase().endsWith("/happ.desktop") ? view.sys.tr("Управление подключением через Happ") : view.sys.tr("Управление в приложении клиента")',
      'subtitle: /\\/mullvad[^\\/]*\\.desktop$/.test(modelData.desktop.toLowerCase()) ? "Connect and disconnect from the island"\n'
      '                              : modelData.desktop.toLowerCase().endsWith("/happ.desktop") ? view.sys.tr("Управление подключением через Happ") : view.sys.tr("Управление в приложении клиента")'),
+    ('    function chooseClient(path) { sys.cfg.vpnPreferredClient = path; sys.cfg.vpnPreferred = ""; sys.saveCfg(); sys.refreshVpnStatus(); }\n',
+     '    function chooseClient(path) { sys.cfg.vpnPreferredClient = path; sys.cfg.vpnPreferred = ""; sys.saveCfg(); sys.refreshVpnStatus(); sys.vpnClassic = false; }\n'),
 ]
+
+# the island's Mullvad page (shown instead of this one when Mullvad is the client;
+# shell.qml's side of it lives in portal-patch.py, which owns shell.qml)
+PAGE_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "MullvadView.qml")
 
 
 def plan(path, repl, prefix):
@@ -78,6 +84,12 @@ def main():
             return 2
         plans.append((path, p))
     changed = False
+    if os.path.exists(PAGE_SRC):
+        page = open(PAGE_SRC, encoding="utf-8").read()
+        dst = os.path.join(D, "MullvadView.qml")
+        if not os.path.exists(dst) or open(dst, encoding="utf-8").read() != page:
+            write(dst, page)
+            changed = True
     for path, (out, pristine) in plans:
         if pristine is not None:
             write(path + ".pristine", pristine)

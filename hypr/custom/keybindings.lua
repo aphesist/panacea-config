@@ -10,3 +10,6 @@
 
 -- Island chat (Claude) on Super+C: Panacea has no shortcut for it
 hl.bind("SUPER + C", hl.dsp.exec_cmd("qs -p ~/.config/panacea ipc call pill chat"))
+
+-- task manager in the island (like Ctrl+Shift+Esc on Windows)
+hl.bind("SUPER + SHIFT + Escape", hl.dsp.exec_cmd("qs -p " .. os.getenv("HOME") .. "/.config/panacea ipc call pill tasks"))

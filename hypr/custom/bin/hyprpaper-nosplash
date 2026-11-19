@@ -1,7 +1,23 @@
 #!/bin/sh
-# hyprpaper 0.8.5 ignores "splash = false" (Panacea's switch_theme.sh writes it)
-# and always draws Hyprland's splash text ("Configration", ...) at the bottom.
-# Make it invisible instead. Re-run by hyprpaper-nosplash.path on every rewrite.
+# hyprpaper 0.8.5 draws Hyprland's splash text at the bottom unless its config
+# says "splash = false". Panacea's switch_theme.sh writes that, but at login it
+# rewrites hyprpaper.conf (truncate + write) at the same moment hyprpaper starts,
+# so hyprpaper can read an empty file and fall back to defaults (splash on).
+# Re-run by hyprpaper-nosplash.path on every rewrite:
+#  1. belt and braces: make the splash fully transparent too;
+#  2. if hyprpaper started before the file's last change, restart it so it
+#     runs with the finished config (no restart loop: after the restart it is
+#     newer than the file).
 F="$HOME/.config/hypr/hyprpaper.conf"
 [ -f "$F" ] || exit 0
+sleep 1   # let the writer finish
 grep -q '^splash_opacity *= *0$' "$F" || printf 'splash_opacity = 0\n' >> "$F"
+
+PID=$(systemctl --user show -p MainPID --value panacea-wallpaper.service)
+[ -n "$PID" ] && [ "$PID" != 0 ] || exit 0
+AGE=$(ps -o etimes= -p "$PID" | tr -d ' ')
+[ -n "$AGE" ] || exit 0
+STARTED=$(( $(date +%s) - AGE ))
+CHANGED=$(stat -c %Y "$F")
+[ "$STARTED" -le "$CHANGED" ] && systemctl --user restart panacea-wallpaper.service
+exit 0

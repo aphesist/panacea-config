@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch Panacea's input.lua for updates
+
+[Path]
+PathChanged=%h/.config/hypr/lua/input.lua
+Unit=panacea-gesture-patch.service
+
+[Install]
+WantedBy=default.target

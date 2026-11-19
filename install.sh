@@ -30,6 +30,7 @@ done
 say "Panacea vault <-> Proton Pass bridge, fish, foot"
 put panacea/scripts/custom/vault-proton.py "$CFG/panacea/scripts/custom/vault-proton.py"
 put panacea/scripts/custom/mullvad_control.py "$CFG/panacea/scripts/custom/mullvad_control.py"
+put panacea/scripts/custom/taskman.py "$CFG/panacea/scripts/custom/taskman.py"
 put fish/custom/proton-pass.fish "$CFG/fish/custom/proton-pass.fish"
 put foot/custom.ini "$CFG/foot/custom.ini"
 mkdir -p "$CFG/environment.d"
@@ -89,9 +90,10 @@ jq -s '.[0] * .[1]' "$S" "$HERE/settings.overrides.json" > "$S.new" && cat "$S.n
 say "systemd user units (splash fix, re-patching after Panacea updates)"
 for f in "$HERE"/systemd/user/*; do put "${f#$HERE/}" "$CFG/systemd/user/$(basename "$f")"; done
 systemctl --user daemon-reload
-systemctl --user enable --now hyprpaper-nosplash.path panacea-vault-patch.path
+systemctl --user enable --now panacea-vault-patch.path
+systemctl --user disable --now hyprpaper-nosplash.path 2>/dev/null || true   # replaced by hyprpaper-conf
 systemctl --user start panacea-wallpaper.service 2>/dev/null || true   # also started at login by bin/after-lock
-systemctl --user start hyprpaper-nosplash.service panacea-vault-patch.service || true
+systemctl --user start panacea-vault-patch.service || true
 
 python3 -I "$CFG/hypr/custom/bin/vault-patch.py" || true
 
@@ -108,6 +110,10 @@ systemctl --user try-restart xdg-desktop-portal || true
 say "Mullvad in the island (VPN page and country button control the mullvad CLI)"
 systemctl --user enable --now panacea-vpn-patch.path
 python3 -I "$CFG/hypr/custom/bin/vpn-patch.py" || echo "  VPN patch skipped - Mullvad keeps opening its app"
+
+say "Touchpad: three-finger swipe up/down = volume"
+systemctl --user enable --now panacea-gesture-patch.path
+python3 -I "$CFG/hypr/custom/bin/gesture-patch.py" || echo "  gesture patch skipped - Panacea's swipes stay as they were"
 
 say "Patching lock.qml now (also re-done before every lock)"
 python3 -I "$CFG/hypr/custom/bin/lock-patch.py" || echo "  lock patch skipped (see message above)"

@@ -6,6 +6,8 @@ PartOf=graphical-session.target
 After=graphical-session.target
 
 [Service]
-ExecStart=/usr/bin/hyprpaper
+# its own config, never touched by Panacea: no race with Panacea's login rewrite (no splash quote)
+ExecStartPre=%h/.config/hypr/custom/bin/hyprpaper-conf
+ExecStart=/usr/bin/hyprpaper -c %h/.config/hypr/custom/hyprpaper.conf
 Restart=always
 RestartSec=1

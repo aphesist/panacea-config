@@ -1,0 +1,6 @@
+[Unit]
+Description=Three-finger swipe up/down changes the volume
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I %h/.config/hypr/custom/bin/gesture-patch.py

@@ -36,15 +36,58 @@ A bare fingerprint glyph at the bottom: just touch the sensor at any time. After
 ### Claude in the island
 
 `Super+C` opens a single Claude tab, cursor in the message box: the Claude
-logo, model pills, a little orange pixel Claude on the empty chat, live steps
-while it works, and approval cards right in the conversation. It runs through
+logo, model pills, a little orange pixel Claude on the empty chat, and one
+timeline while it works. Read-only commands just run; anything that changes
+something asks with a card right where the step is, and the card turns into the
+step's record once you answer. It runs through
 [panacea-claude-bridge](https://github.com/aphesist/panacea-claude-bridge) on a
 Claude subscription.
 
 <p>
 <img src="docs/img/chat-idle.gif" width="400" alt="Empty island chat with the Claude logo and an animated orange pixel Claude">
-<img src="docs/img/chat.png" width="400" alt="An approval card in the island chat with the exact command and Allow / Deny">
+<img src="docs/img/claude-chat.gif" width="400" alt="A question typed into the island chat: a read-only step runs on its own, then an approval card for mkdir is allowed and becomes a 'Run a command · Done' row above the reply">
 </p>
+
+### Tabs that slide
+
+Switching Home ↔ Claude slides the page in from the side of the tab you picked,
+and the tab pill stretches across. The model pills (Opus · Sonnet · Haiku) have
+a selector that glides behind the names with a small overshoot.
+
+<img src="docs/img/tabs.gif" width="400" alt="The island switching between Home and the Claude chat, then the model selector sliding between Opus, Sonnet and Haiku">
+
+### Activity glow
+
+A thin light runs along the island's exact outline, flares included, while
+something works: Claude's orange while it thinks, white while the VPN connects,
+and any agent's own colours (`panacea-glow start <name> "#hex,#hex"`, or
+`panacea-glow run <name> "#hex" -- <command>`). It moves with the island as one
+piece. Settings → Motion → *Activity glow*: on/off per source, loop or bounce,
+speed, intensity.
+
+<img src="docs/img/glow.gif" width="680" alt="The collapsed island with a thin glow running along its edge: orange for Claude, then white, then violet and cyan for an agent">
+
+### Mullvad, in the island
+
+Left-click the island's country button for a Mullvad page in the island's own
+style: status with a power button, every country and city (search, recents),
+and Mullvad's settings (lockdown, LAN, quantum, DAITA, DNS blocking) as
+toggles. Right-click still toggles the VPN. No more "VPN disconnected" piles of
+notifications. *Change VPN client* goes back to Panacea's client picker.
+
+<img src="docs/img/mullvad.gif" width="400" alt="The Mullvad page in the island switching from São Paulo to Stockholm and back (addresses masked)">
+
+### Task manager
+
+`Super+Shift+Esc`, like Windows, in the island's style. **Processes**: apps
+grouped with their child processes and icons, then background and system
+processes; right-click for End task, Force kill, Copy PID. **Performance**: this
+machine's real parts (i9-13900H, LPDDR5 at its rated speed, Iris Xe and the RTX
+4070, the NVMe, Wi-Fi, battery health) with live charts and per-thread bars; the
+RTX is only read while it's already awake. **Services**: your user services,
+with Start / Stop / Restart (system ones ask for your password).
+
+<img src="docs/img/tasks.gif" width="820" alt="The task manager: the process tree with app icons, the Performance tab with CPU chart and thread bars, the Services list">
 
 ### One file picker, inside the island
 
@@ -74,15 +117,21 @@ dialog on their own.
 | | One lock entry point for startup, idle and lid; `flock` stops two lock clients from starting | `bin/panacea-lock` |
 | **Idle** | On battery: lock at 5 min, screen off at 5.5, suspend at 15. Plugged in: lock at 10, screen off at 11 | `hypridle.conf`, `bin/idle-action` |
 | **Vault** | Panacea's password manager becomes a front-end for **Proton Pass**: it shows logins from every vault, new and edited entries go back to Proton, and a delete only hides the entry. Offline, it falls back to the encrypted local copy | `panacea/scripts/custom/vault-proton.py`, `bin/vault-patch.py` |
-| **Desktop** | Hides hyprpaper's splash quote ("Configration"…): hyprpaper 0.8.5 ignores `splash = false`, so set `splash_opacity = 0` instead | `bin/hyprpaper-nosplash` + `.path` unit |
+| **Desktop** | Hides hyprpaper's splash quote for good: hyprpaper runs from its own config (`hyprpaper-conf`, written just before it starts from Panacea's saved wallpaper), so Panacea's login rewrite of `hyprpaper.conf` can't race it any more | `bin/hyprpaper-conf`, `systemd/user/panacea-wallpaper.service` |
 | | **The wallpaper always comes back.** hyprpaper runs as its own service that restarts itself, so restarting or crashing the Panacea shell no longer leaves the desktop without a wallpaper (it used to be the shell's child) | `panacea-wallpaper.service`, `bin/after-lock` |
 | | **Approval cards in Panacea's palette.** The island's approval toast had green ✓ / red × circles; now flat Deny / Allow pills (white = primary), matching the chat's approval card, and for Claude the pixel Claude itself, animated (it waves for your attention), centred on the card | `bin/portal-patch.py` |
 | | **Mullvad from the island.** Panacea's VPN control could only drive Happ; any other client just opened its app. An adapter now drives the `mullvad` CLI: pick Mullvad in Choose VPN, then the island's country button and the VPN page's power button connect and disconnect it, and the island shows its real state. `mullvad/` has the setup that keeps the internet working whenever the VPN is off (systemd-resolved DNS, ufw kept, early-boot blocker off), a check script and a rescue script | `panacea/scripts/custom/mullvad_control.py`, `bin/vpn-patch.py`, `mullvad/` |
+| | **Mullvad page in the island**: servers (countries, cities, search, recents) and settings as toggles; left-click opens it, right-click toggles; no notification spam | `bin/MullvadView.qml`, `bin/vpn-patch.py`, `bin/portal-patch.py` |
+| | **Animated tabs**: Home ↔ Claude slides the page and stretches the tab pill | `bin/portal-patch.py` |
+| | **Activity glow** along the island's outline while Claude thinks, the VPN connects or an agent runs; configurable in Settings → Motion; `panacea-glow` for scripts | `bin/IslandGlow.qml`, `bin/panacea-glow`, `bin/portal-patch.py` |
+| | **Task manager** on **Super+Shift+Esc**: process tree with icons and End task, real hardware with live charts, user and system services | `bin/TasksView.qml`, `bin/TasksChart.qml`, `panacea/scripts/custom/taskman.py`, `keybindings.lua` |
 | | Softer, slower island motion, closer to macOS: 440 ms, 18 % overshoot | `settings.overrides.json` |
 | | Screenshot on **PrtSc** | `settings.overrides.json` |
 | | Island chat on **Super+C** (Panacea has no shortcut for it) | `keybindings.lua` |
 | | Voice dictation on **Right Ctrl** instead of AltGr, which Brazilian ABNT2 needs for `?` `/` `°` | `settings.overrides.json` |
 | | Window corners 16 px with the same squircle curve as the island | `general.lua` |
+| | **Three-finger swipe up/down = volume** (5 % per swipe, with the island's volume popup) instead of Panacea's fullscreen/close-window; sideways still switches workspaces | `bin/gesture-patch.py` |
+| | Window resize moved to **Super+Alt+arrows**, so **Alt+←/→** reach apps again (back/forward in Zen) | Panacea Settings → Shortcuts (Panacea's own `binds_data.lua`, not in this repo) |
 | | Touchpad right-click by pressing the bottom-right corner (as well as a two-finger tap), instead of Panacea's two-finger-press-only *clickfinger* | `general.lua` |
 | | Spotify opens as a normal window (Panacea sends it to the hidden scratchpad) | `windowrules.lua` |
 | **File picker** | One picker, inside the island. Every app's Open/Save dialog (browsers, Electron apps, GTK apps) and the chat's paperclip morph the island into its own file manager in picker mode, with Cancel/Open, a filename box for Save and "Use this folder" for folder picks. Before, apps got a white GTK dialog and the paperclip opened a window that Hyprland tiled behind the island. Falls back to the GTK dialog if Panacea can't answer | `bin/panacea-portal.py`, `bin/portal-patch.py`, `portal/` |
