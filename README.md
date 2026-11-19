@@ -54,6 +54,7 @@ Claude subscription.
 |---|---|---|
 | **Lock screen** | Fingerprint unlock at any time, with no password first. A bare fingerprint glyph shows the state: pulses when ready, shakes on a miss, grows on success, dims when the reader is unavailable. A miss retries after 1.5 s | `hypr/custom/bin/lock-patch.py` |
 | | Unlock fades into the desktop instead of cutting | `lock-patch.py` + `session_lock_xray` |
+| | **Password once per boot**, like macOS after a restart: while the keyring is still locked, the lock screen asks for the password (which also unlocks the keyring through PAM) instead of the fingerprint. Every later unlock is fingerprint, and the keyring's white password prompt never appears | `lock-patch.py` |
 | | Locked from the first frame: wallpaper and island are held back until the lock is confirmed, with a black `swaylock` fallback if it isn't up in 4 s | `autostart.lua`, `bin/after-lock` |
 | | One lock entry point for startup, idle and lid; `flock` stops two lock clients from starting | `bin/panacea-lock` |
 | **Idle** | On battery: lock at 5 min, screen off at 5.5, suspend at 15. Plugged in: lock at 10, screen off at 11 | `hypridle.conf`, `bin/idle-action` |
