@@ -29,17 +29,32 @@ all-or-nothing, and re-run themselves whenever an update replaces the file.
 
 ### Lock screen
 
-A bare fingerprint glyph at the bottom: just touch the sensor at any time, no password first. It pulses when ready, shakes on a miss, and the unlock fades into the desktop.
+A bare fingerprint glyph at the bottom: just touch the sensor at any time. After a restart it asks for your password once, which also unlocks the keyring, then it's fingerprint only. It pulses when ready, shakes on a miss, and the unlock fades into the desktop.
 
 <img src="docs/img/lock.jpg" width="860" alt="Panacea lock screen with clock and a fingerprint indicator reading 'Touch the sensor to unlock'">
 
 ### Claude in the island
 
-A single agent tab with model pills; Enter sends. It runs through
+`Super+C` opens a single Claude tab, cursor in the message box: the Claude
+logo, model pills, a little orange pixel Claude on the empty chat, live steps
+while it works, and approval cards right in the conversation. It runs through
 [panacea-claude-bridge](https://github.com/aphesist/panacea-claude-bridge) on a
 Claude subscription.
 
-<img src="docs/img/chat.png" width="460" alt="Island chat patched into a single Claude tab with Opus, Sonnet and Haiku pills">
+<p>
+<img src="docs/img/chat-idle.gif" width="400" alt="Empty island chat with the Claude logo and an animated orange pixel Claude">
+<img src="docs/img/chat.png" width="400" alt="An approval card in the island chat with the exact command and Allow / Deny">
+</p>
+
+### One file picker, inside the island
+
+The chat's paperclip, and Open/Save dialogs from every app (Zen, Claude
+desktop, Electron and GTK apps, via an xdg-desktop-portal backend), morph the
+island into its own file manager in picker mode, instead of a white GTK
+window tiled behind it. If Panacea isn't running, apps fall back to the GTK
+dialog on their own.
+
+<img src="docs/img/picker.png" width="860" alt="Panacea's file manager in picker mode inside the island, with Cancel and Open buttons">
 
 ### Launcher and calendar
 
