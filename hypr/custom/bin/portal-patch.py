@@ -12,7 +12,7 @@ back on its own). Re-run by panacea-portal-patch.path after Panacea updates.
 import os, sys
 
 D = os.path.expanduser("~/.config/panacea")
-VERSION = "v5"
+VERSION = "v6"
 TAG_PREFIX = "// panacea-local portal patch "
 TAG = TAG_PREFIX + VERSION
 
@@ -150,6 +150,16 @@ SHELL = [
                 }
             }
 """),
+    # the island's chat tab is Claude's: "Claude" and its logo
+    ('{page:"chat", title:root.tr("Чат"), icon:0xF0181}', '{page:"chat", title:"Claude", icon:0xF0181}'),
+    ("""IslandTabIcon { anchors.verticalCenter: parent.verticalCenter; width: 19; height: 19; kind: modelData.page === "main" ? "home" : "chat"; tint: root.page === modelData.page ? root.colFg : root.colMuted }""", """IslandTabIcon { anchors.verticalCenter: parent.verticalCenter; width: 19; height: 19; kind: modelData.page === "main" ? "home" : "chat"; tint: root.page === modelData.page ? root.colFg : root.colMuted
+                                        visible: modelData.page !== "chat" || tabClaudeLogo.status !== Image.Ready }
+                        // """ + TAG + """: the chat tab is Claude's (panacea-claude-bridge): its logo, white like the rest
+                        Image { id: tabClaudeLogo; visible: modelData.page === "chat" && status === Image.Ready
+                                anchors.verticalCenter: parent.verticalCenter; width: 17; height: 17
+                                sourceSize: Qt.size(68, 68); fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true
+                                source: "file://" + Quickshell.env("HOME") + "/.config/panacea-claude/claude-logo.svg"
+                                opacity: root.page === modelData.page ? 1 : 0.55 }"""),
     # the old windowed chat picker is never opened any more
     ("    active: root.chatFilePickerOpen\n    FloatingWindow {\n    id: chatPickerWindow\n",
      "    active: false   " + TAG + ": replaced by the island picker\n    FloatingWindow {\n    id: chatPickerWindow\n"),
