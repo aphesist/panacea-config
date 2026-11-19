@@ -4,3 +4,8 @@
                url("about:privatebrowsing"), url-prefix("about:zen") {
   :root, body { background-color: #0e0e0e !important; }
 }
+
+/* Panacea scroll nubs (zen/dock/panacea-scroll.uc.js) replace the page's main scrollbars;
+   scrollbars inside pages stay, thin and dark (sites that style their own keep theirs) */
+:root { scrollbar-width: none !important; }
+* { scrollbar-width: thin; scrollbar-color: #2a2a2a transparent; }

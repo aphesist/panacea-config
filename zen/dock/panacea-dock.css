@@ -435,3 +435,21 @@
 #urlbar #urlbar-input::placeholder, #urlbar .urlbar-input::placeholder {
   color: color-mix(in srgb, var(--p-dim, #8c8c8c) 70%, transparent) !important;
 }
+
+/* ---------------------------------------------------------------- scroll nubs (panacea-scroll.uc.js) */
+#panacea-scroll {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 40;
+  overflow: visible;
+}
+#panacea-scroll path {
+  stroke: var(--p0, #050505);
+  pointer-events: visibleStroke;
+  cursor: default;
+  transition: opacity 0.4s ease;
+}
+:root[inDOMFullscreen] #panacea-scroll { display: none; }

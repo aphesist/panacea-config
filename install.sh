@@ -80,6 +80,8 @@ if [ -n "$ZP" ] && [ -d "$ZEN/$ZP" ]; then
     cp -r "$HERE/zen/loader/utils" "$ZEN/$ZP/chrome/"
     install -m 644 "$HERE/zen/dock/panacea-dock.uc.js" "$ZEN/$ZP/chrome/JS/panacea-dock.uc.js"
     install -m 644 "$HERE/zen/dock/panacea-dock.css" "$ZEN/$ZP/chrome/panacea-dock.css"
+    install -m 644 "$HERE/zen/dock/panacea-scroll.uc.js" "$ZEN/$ZP/chrome/JS/panacea-scroll.uc.js"
+    mkdir -p "$ZEN/$ZP/chrome/JS/PanaceaScroll" && cp "$HERE"/zen/dock/PanaceaScroll/*.sys.mjs "$ZEN/$ZP/chrome/JS/PanaceaScroll/"
     echo "  done - restart Zen to see it (dock off: about:config, panacea.zen.dock = false)"
 else
     echo "  skipped: open Zen once to create its profile, then re-run"
