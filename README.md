@@ -76,7 +76,7 @@ dialog on their own.
 | **Vault** | Panacea's password manager becomes a front-end for **Proton Pass**: it shows logins from every vault, new and edited entries go back to Proton, and a delete only hides the entry. Offline, it falls back to the encrypted local copy | `panacea/scripts/custom/vault-proton.py`, `bin/vault-patch.py` |
 | **Desktop** | Hides hyprpaper's splash quote ("Configration"…): hyprpaper 0.8.5 ignores `splash = false`, so set `splash_opacity = 0` instead | `bin/hyprpaper-nosplash` + `.path` unit |
 | | **The wallpaper always comes back.** hyprpaper runs as its own service that restarts itself, so restarting or crashing the Panacea shell no longer leaves the desktop without a wallpaper (it used to be the shell's child) | `panacea-wallpaper.service`, `bin/after-lock` |
-| | **Approval cards in Panacea's palette.** The island's approval toast had green ✓ / red × circles; now flat Deny / Allow pills (white = primary), matching the chat's approval card, with the icon centred on the card | `bin/portal-patch.py` |
+| | **Approval cards in Panacea's palette.** The island's approval toast had green ✓ / red × circles; now flat Deny / Allow pills (white = primary), matching the chat's approval card, and for Claude the pixel Claude itself, animated (it waves for your attention), centred on the card | `bin/portal-patch.py` |
 | | Softer, slower island motion, closer to macOS: 440 ms, 18 % overshoot | `settings.overrides.json` |
 | | Screenshot on **PrtSc** | `settings.overrides.json` |
 | | Island chat on **Super+C** (Panacea has no shortcut for it) | `keybindings.lua` |

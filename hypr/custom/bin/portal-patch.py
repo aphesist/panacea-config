@@ -12,7 +12,7 @@ back on its own). Re-run by panacea-portal-patch.path after Panacea updates.
 import os, sys
 
 D = os.path.expanduser("~/.config/panacea")
-VERSION = "v4"
+VERSION = "v5"
 TAG_PREFIX = "// panacea-local portal patch "
 TAG = TAG_PREFIX + VERSION
 
@@ -82,13 +82,73 @@ SHELL = [
                                font { family: root.fontFam; pixelSize: root.fontSize - 3; bold: parent.primary } }
                         MouseArea { id: apMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.replyAgentApproval(modelData.action) }
 """),
-    # the approval toast's icon: centred on the card's height (it's taller than a plain toast)
-    ("""                Layout.preferredHeight: 34
+    # The toast's icon. Claude's approval cards get the pixel Claude from the
+    # chat instead: no tile behind it, bigger, and animated (it waves for your
+    # attention). Taller approval cards also centre the icon vertically.
+    ("""                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
                 Layout.alignment: Qt.AlignTop
                 radius: 10
-""", """                Layout.preferredHeight: 34
-                Layout.alignment: root.approvalToast ? Qt.AlignVCenter : Qt.AlignTop   """ + TAG + """
+                color: root.notifUrgent ? Qt.rgba(1, 0.27, 0.27, 0.18)
+                                        : Qt.rgba(1, 1, 1, 0.08)
+""", """                // """ + TAG + """
+                readonly property bool claude: root.notifApp === "Panacea Claude"
+                Layout.preferredWidth: claude ? 44 : 34
+                Layout.preferredHeight: claude ? 40 : 34
+                Layout.alignment: root.approvalToast ? Qt.AlignVCenter : Qt.AlignTop
                 radius: 10
+                color: claude ? "transparent"
+                     : root.notifUrgent ? Qt.rgba(1, 0.27, 0.27, 0.18)
+                                        : Qt.rgba(1, 1, 1, 0.08)
+"""),
+    ("""                    visible: source != "" && status === Image.Ready
+""", """                    visible: source != "" && status === Image.Ready && !parent.claude
+"""),
+    ("""                    visible: !toastIcon.visible
+""", """                    visible: !toastIcon.visible && !parent.claude
+"""),
+    ("""                    font { family: root.fontFam; pixelSize: root.iconSize - 1 }
+                }
+            }
+""", """                    font { family: root.fontFam; pixelSize: root.iconSize - 1 }
+                }
+                // the pixel Claude, asking for you: arms wave in turn, feet tap, it blinks
+                Item {
+                    id: toastCritter
+                    visible: parent.claude
+                    anchors.centerIn: parent
+                    readonly property int px: 4
+                    property int frame: 0          // 0 left arm up, 1 rest, 2 right arm up, 3 rest
+                    property bool blink: false
+                    readonly property var frames: [
+                        ["..XXXXXXX..", "XXXXXXXXX..", "XXXEXXXEX..", "..XXXXXXXXX", "..XXXXXXXXX", "..XXXXXXX..", "..X.X.X.X.."],   // left arm up
+                        ["..XXXXXXX..", "..XXXXXXX..", "..XEXXXEX..", "XXXXXXXXXXX", "XXXXXXXXXXX", "..XXXXXXX..", ".X.X.X.X..."],   // rest
+                        ["..XXXXXXX..", "..XXXXXXXXX", "..XEXXXEXXX", "XXXXXXXXX..", "XXXXXXXXX..", "..XXXXXXX..", "..X.X.X.X.."],   // right arm up
+                        ["..XXXXXXX..", "..XXXXXXX..", "..XEXXXEX..", "XXXXXXXXXXX", "XXXXXXXXXXX", "..XXXXXXX..", ".X.X.X.X..."]]   // rest
+                    readonly property var rows: frames[frame]
+                    width: 11 * px; height: 7 * px
+                    Timer { interval: 260; repeat: true; running: toastCritter.visible
+                            onTriggered: toastCritter.frame = (toastCritter.frame + 1) % 4 }
+                    Timer { interval: 2600; repeat: true; running: toastCritter.visible
+                            onTriggered: { toastCritter.blink = true; critterUnblink.restart(); } }
+                    Timer { id: critterUnblink; interval: 150; onTriggered: toastCritter.blink = false }
+                    Grid {
+                        columns: 11
+                        y: toastCritter.frame % 2 === 0 ? -2 : 0     // a little hop on each wave
+                        Behavior on y { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
+                        Repeater {
+                            model: 77
+                            Rectangle {
+                                required property int index
+                                readonly property string ch: toastCritter.rows[Math.floor(index / 11)].charAt(index % 11)
+                                width: toastCritter.px; height: toastCritter.px
+                                color: ch === "." ? "transparent"
+                                     : ch === "E" && !toastCritter.blink ? "#141414" : "#d97757"
+                            }
+                        }
+                    }
+                }
+            }
 """),
     # the old windowed chat picker is never opened any more
     ("    active: root.chatFilePickerOpen\n    FloatingWindow {\n    id: chatPickerWindow\n",
