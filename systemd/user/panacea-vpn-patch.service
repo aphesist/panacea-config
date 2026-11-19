@@ -1,0 +1,6 @@
+[Unit]
+Description=Re-apply the Mullvad control patch to Panacea's VPN files
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I %h/.config/hypr/custom/bin/vpn-patch.py

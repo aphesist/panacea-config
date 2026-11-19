@@ -29,6 +29,7 @@ done
 
 say "Panacea vault <-> Proton Pass bridge, fish, foot"
 put panacea/scripts/custom/vault-proton.py "$CFG/panacea/scripts/custom/vault-proton.py"
+put panacea/scripts/custom/mullvad_control.py "$CFG/panacea/scripts/custom/mullvad_control.py"
 put fish/custom/proton-pass.fish "$CFG/fish/custom/proton-pass.fish"
 put foot/custom.ini "$CFG/foot/custom.ini"
 mkdir -p "$CFG/environment.d"
@@ -103,6 +104,10 @@ systemctl --user enable --now panacea-portal-patch.path
 python3 -I "$CFG/hypr/custom/bin/portal-patch.py" || echo "  island picker patch skipped - apps keep the GTK dialog"
 busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus ReloadConfig >/dev/null 2>&1 || true
 systemctl --user try-restart xdg-desktop-portal || true
+
+say "Mullvad in the island (VPN page and country button control the mullvad CLI)"
+systemctl --user enable --now panacea-vpn-patch.path
+python3 -I "$CFG/hypr/custom/bin/vpn-patch.py" || echo "  VPN patch skipped - Mullvad keeps opening its app"
 
 say "Patching lock.qml now (also re-done before every lock)"
 python3 -I "$CFG/hypr/custom/bin/lock-patch.py" || echo "  lock patch skipped (see message above)"

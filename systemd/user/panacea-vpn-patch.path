@@ -1,0 +1,10 @@
+[Unit]
+Description=Watch Panacea's vpn.py and VpnView.qml for updates
+
+[Path]
+PathChanged=%h/.config/panacea/scripts/vpn.py
+PathChanged=%h/.config/panacea/VpnView.qml
+Unit=panacea-vpn-patch.service
+
+[Install]
+WantedBy=default.target
