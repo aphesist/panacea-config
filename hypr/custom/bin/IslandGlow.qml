@@ -111,36 +111,42 @@ Item {
     readonly property real u: kind === "pingpong" ? (t < 0.5 ? 2 * t : 2 * t - 1)
                               : (closed && kind === "standard") || kind === "breathing" || kind === "wave" ? t
                               : Math.min(1, t * 1.15)
-    readonly property real springLen: seg * (0.4 + 0.6 * Math.sin(Math.PI * u))   // long when fast
+    readonly property real speed: Math.sin(Math.PI * u)                            // 0 at the ends, 1 mid-run
+    readonly property real springLen: seg * (0.4 + 0.6 * speed)                    // long when fast
+    readonly property real leanRun: 0.35 + 0.65 * speed                            // glow at the front when fast
 
     // the strokes of the current style: head position, direction, length, how lit,
-    // and (for strokes born at a point) where they start, so they grow out of it
+    // lean (where the bright part sits: 1 at the head, 0 in the middle, so it glides
+    // across instead of jumping when a stroke turns round), and (for strokes born at
+    // a point) where they start, so they grow out of it
     readonly property var comets: {
         var p = ease(u), L = springLen, n = len;
         if (still || kind === "breathing") return [];
         if (kind === "standard") {
-            if (closed) return [{ h: t * n, d: 1, l: seg, a: 1 }];
-            return [{ h: p * (n + L), d: 1, l: L, a: 1 }];
+            if (closed) return [{ h: t * n, d: 1, l: seg, a: 1, lean: 1 }];
+            return [{ h: p * (n + L), d: 1, l: L, a: 1, lean: leanRun }];
         }
         if (kind === "pingpong") {
             var fwd = t < 0.5;
-            if (closed) return [{ h: fwd ? p * n : (1 - p) * n, d: fwd ? 1 : -1, l: L, a: 1 }];
-            return fwd ? [{ h: L + p * (n - L), d: 1, l: L, a: 1 }]
-                       : [{ h: n - L - p * (n - L), d: -1, l: L, a: 1 }];
+            // the lean follows the speed all the way to 0 at each turn: the stroke gathers,
+            // its glow drifts to the middle, then out to the new front
+            if (closed) return [{ h: fwd ? p * n : (1 - p) * n, d: fwd ? 1 : -1, l: L, a: 1, lean: speed }];
+            return fwd ? [{ h: L + p * (n - L), d: 1, l: L, a: 1, lean: speed }]
+                       : [{ h: n - L - p * (n - L), d: -1, l: L, a: 1, lean: speed }];
         }
         if (kind === "symmetric") {
             var o = bottomMid, reach = closed ? n / 2 : n / 2 + L;
             var al = smooth(u / 0.18) * (closed ? smooth((1 - u) / 0.22) : 1);
-            return [{ h: o + p * reach, d: 1, l: L, a: al, o: o }, { h: o - p * reach, d: -1, l: L, a: al, o: o }];
+            return [{ h: o + p * reach, d: 1, l: L, a: al, o: o, lean: leanRun }, { h: o - p * reach, d: -1, l: L, a: al, o: o, lean: leanRun }];
         }
         if (kind === "converge") {
             var s0 = closed ? topMid : 0, s1 = closed ? topMid + n : n, half = closed ? n / 2 : n / 2;
             var ac = smooth(u / 0.15) * smooth((1 - u) / 0.28);
-            return [{ h: s0 + p * half, d: 1, l: L, a: ac }, { h: s1 - p * half, d: -1, l: L, a: ac }];
+            return [{ h: s0 + p * half, d: 1, l: L, a: ac, lean: leanRun }, { h: s1 - p * half, d: -1, l: L, a: ac, lean: leanRun }];
         }
         // wave: a long soft band, even pace
         var W = Math.max(120, n * 0.45);
-        return [{ h: closed ? t * n : t * (n + W), d: 1, l: W, a: 0.75, soft: true }];
+        return [{ h: closed ? t * n : t * (n + W), d: 1, l: W, a: 0.75, soft: true, lean: 0.45 }];
     }
     // the lit edge: breathing lights all of it, wave keeps it faintly lit; the stroke
     // styles have none, so the island stays pure black outside the moving stroke
@@ -148,14 +154,22 @@ Item {
         : kind === "breathing" ? 0.1 + 0.8 * (0.5 - 0.5 * Math.cos(2 * Math.PI * t))
         : kind === "wave" ? 0.2 : 0
 
-    // a lit stretch [lo, hi] along the path, as a dash pattern for a stroke of width w
+    // a lit stretch [lo, hi] along the path: the whole stroke (frac 1), or a shorter
+    // brighter part of it placed by the lean; as a dash pattern for a stroke of width w
     function span(c, frac) {
-        var lo, hi, l = c.l * frac;
-        if (c.d > 0) { hi = c.h; lo = hi - l; if (c.o !== undefined && lo < c.o) lo = c.o; }
-        else { lo = c.h; hi = lo + l; if (c.o !== undefined && hi > c.o) hi = c.o; }
+        var lo, hi;
+        if (c.d > 0) { hi = c.h; lo = hi - c.l; if (c.o !== undefined && lo < c.o) lo = c.o; }
+        else { lo = c.h; hi = lo + c.l; if (c.o !== undefined && hi > c.o) hi = c.o; }
+        hi = Math.max(lo, hi);
+        if (frac < 1) {
+            var whole = hi - lo, part = whole * frac;
+            var mid = (lo + hi) / 2 + c.d * (c.lean === undefined ? 1 : c.lean) * (whole - part) / 2;
+            lo = mid - part / 2; hi = mid + part / 2;
+        }
         if (!closed) { lo = Math.max(0, lo); hi = Math.min(len, hi); }      // an open path has ends: clip to them
         return [lo, Math.max(lo, hi)];
     }
+    function mix(x, y, k) { return Qt.rgba(x.r + (y.r - x.r) * k, x.g + (y.g - x.g) * k, x.b + (y.b - x.b) * k, 1); }
     function shown(c) { var s = span(c, 1); return s[1] - s[0] > 0.5; }
     // one dash per period: the period is the loop's length (closed, so a stroke wraps
     // around) or far longer than the path (open, so it never repeats back at the start).
@@ -217,69 +231,108 @@ Item {
         delegate: Item {
             id: comet
             required property int index
-            readonly property var c: glow.comets[index] || ({ h: 0, d: 1, l: 1, a: 0 })
+            readonly property var c: glow.comets[index] || ({ h: 0, d: 1, l: 1, a: 0, lean: 1 })
+            readonly property real fadeTop: glow.closed ? -2 : glow.ey0          // the fade towards the screen edge
+            readonly property real fadeBottom: glow.closed ? -1 : glow.fadeTo
+            readonly property real k0: glow.closed ? 1 : 0
             anchors.fill: parent
             opacity: glow.shown(c) ? c.a : 0
-            // soft halo around the head
+            // the glow around the bright part: a wide faint bloom and a tighter halo, blurred
             Item {
                 anchors.fill: parent
                 layer.enabled: glow.visible
-                layer.effect: MultiEffect { blurEnabled: true; blur: 0.55; blurMax: 14 }
+                layer.effect: MultiEffect { blurEnabled: true; blur: 0.6; blurMax: 16 }
                 Shape {
                     anchors.fill: parent
                     preferredRendererType: Shape.CurveRenderer
                     ShapePath {
-                        fillColor: "transparent"; strokeWidth: 4; capStyle: ShapePath.RoundCap
+                        fillColor: "transparent"; strokeWidth: 7; capStyle: ShapePath.RoundCap
                         strokeColor: "transparent"
                         strokeGradient: LinearGradient {
-                    x1: 0; y1: glow.closed ? -2 : glow.ey0; x2: 0; y2: glow.closed ? -1 : glow.fadeTo
-                    GradientStop { position: 0; color: glow.a(glow.c1, glow.closed ? ((comet.c.soft ? 0.45 : 0.75) * glow.intensity) : 0) }
-                    GradientStop { position: 1; color: glow.a(glow.c1, (comet.c.soft ? 0.45 : 0.75) * glow.intensity) }
-                }
+                            x1: 0; y1: comet.fadeTop; x2: 0; y2: comet.fadeBottom
+                            GradientStop { position: 0; color: glow.a(glow.c2, comet.k0 * 0.28 * glow.intensity) }
+                            GradientStop { position: 1; color: glow.a(glow.c2, 0.28 * glow.intensity) }
+                        }
                         strokeStyle: ShapePath.DashLine
-                        dashPattern: glow.dash(comet.c, 0.6, 4); dashOffset: glow.off(comet.c, 0.6, 4)
+                        dashPattern: glow.dash(comet.c, 0.85, 7); dashOffset: glow.off(comet.c, 0.85, 7)
+                        PathSvg { path: glow.d }
+                    }
+                    ShapePath {
+                        fillColor: "transparent"; strokeWidth: 3.5; capStyle: ShapePath.RoundCap
+                        strokeColor: "transparent"
+                        strokeGradient: LinearGradient {
+                            x1: 0; y1: comet.fadeTop; x2: 0; y2: comet.fadeBottom
+                            GradientStop { position: 0; color: glow.a(glow.c1, comet.k0 * (comet.c.soft ? 0.45 : 0.8) * glow.intensity) }
+                            GradientStop { position: 1; color: glow.a(glow.c1, (comet.c.soft ? 0.45 : 0.8) * glow.intensity) }
+                        }
+                        strokeStyle: ShapePath.DashLine
+                        dashPattern: glow.dash(comet.c, 0.4, 3.5); dashOffset: glow.off(comet.c, 0.4, 3.5)
                         PathSvg { path: glow.d }
                     }
                 }
             }
-            // the fine line: a tail in the last colour, then the middle, then a bright head
+            // the line: five graded layers, from a dim tail in the last colour to a bright core
             Shape {
                 anchors.fill: parent
                 preferredRendererType: Shape.CurveRenderer
                 ShapePath {
+                    fillColor: "transparent"; strokeWidth: 1; capStyle: ShapePath.RoundCap
+                    strokeColor: "transparent"
+                    strokeGradient: LinearGradient {
+                        x1: 0; y1: comet.fadeTop; x2: 0; y2: comet.fadeBottom
+                        GradientStop { position: 0; color: glow.a(glow.c2, comet.k0 * (0.2 + 0.25 * glow.intensity)) }
+                        GradientStop { position: 1; color: glow.a(glow.c2, 0.2 + 0.25 * glow.intensity) }
+                    }
+                    strokeStyle: ShapePath.DashLine
+                    dashPattern: glow.dash(comet.c, 1, 1); dashOffset: glow.off(comet.c, 1, 1)
+                    PathSvg { path: glow.d }
+                }
+                ShapePath {
                     fillColor: "transparent"; strokeWidth: 1.1; capStyle: ShapePath.RoundCap
                     strokeColor: "transparent"
                     strokeGradient: LinearGradient {
-                    x1: 0; y1: glow.closed ? -2 : glow.ey0; x2: 0; y2: glow.closed ? -1 : glow.fadeTo
-                    GradientStop { position: 0; color: glow.a(glow.c2, glow.closed ? (0.35 + 0.35 * glow.intensity) : 0) }
-                    GradientStop { position: 1; color: glow.a(glow.c2, 0.35 + 0.35 * glow.intensity) }
-                }
+                        x1: 0; y1: comet.fadeTop; x2: 0; y2: comet.fadeBottom
+                        GradientStop { position: 0; color: glow.a(glow.mix(glow.c2, glow.c1, 0.5), comet.k0 * (0.32 + 0.3 * glow.intensity)) }
+                        GradientStop { position: 1; color: glow.a(glow.mix(glow.c2, glow.c1, 0.5), 0.32 + 0.3 * glow.intensity) }
+                    }
                     strokeStyle: ShapePath.DashLine
-                    dashPattern: glow.dash(comet.c, 1, 1.1); dashOffset: glow.off(comet.c, 1, 1.1)
+                    dashPattern: glow.dash(comet.c, 0.72, 1.1); dashOffset: glow.off(comet.c, 0.72, 1.1)
                     PathSvg { path: glow.d }
                 }
                 ShapePath {
                     fillColor: "transparent"; strokeWidth: 1.2; capStyle: ShapePath.RoundCap
                     strokeColor: "transparent"
                     strokeGradient: LinearGradient {
-                    x1: 0; y1: glow.closed ? -2 : glow.ey0; x2: 0; y2: glow.closed ? -1 : glow.fadeTo
-                    GradientStop { position: 0; color: glow.a(glow.c1, glow.closed ? (0.55 + 0.4 * glow.intensity) : 0) }
-                    GradientStop { position: 1; color: glow.a(glow.c1, 0.55 + 0.4 * glow.intensity) }
-                }
+                        x1: 0; y1: comet.fadeTop; x2: 0; y2: comet.fadeBottom
+                        GradientStop { position: 0; color: glow.a(glow.c1, comet.k0 * (0.48 + 0.4 * glow.intensity)) }
+                        GradientStop { position: 1; color: glow.a(glow.c1, 0.48 + 0.4 * glow.intensity) }
+                    }
                     strokeStyle: ShapePath.DashLine
-                    dashPattern: glow.dash(comet.c, 0.55, 1.2); dashOffset: glow.off(comet.c, 0.55, 1.2)
+                    dashPattern: glow.dash(comet.c, 0.48, 1.2); dashOffset: glow.off(comet.c, 0.48, 1.2)
                     PathSvg { path: glow.d }
                 }
                 ShapePath {
-                    fillColor: "transparent"; strokeWidth: 1.5; capStyle: ShapePath.RoundCap
+                    fillColor: "transparent"; strokeWidth: 1.35; capStyle: ShapePath.RoundCap
                     strokeColor: "transparent"
                     strokeGradient: LinearGradient {
-                    x1: 0; y1: glow.closed ? -2 : glow.ey0; x2: 0; y2: glow.closed ? -1 : glow.fadeTo
-                    GradientStop { position: 0; color: glow.a(Qt.lighter(glow.c0, 1.2), glow.closed ? (comet.c.soft ? 0.5 : 1) : 0) }
-                    GradientStop { position: 1; color: glow.a(Qt.lighter(glow.c0, 1.2), comet.c.soft ? 0.5 : 1) }
-                }
+                        x1: 0; y1: comet.fadeTop; x2: 0; y2: comet.fadeBottom
+                        GradientStop { position: 0; color: glow.a(glow.mix(glow.c1, glow.c0, 0.6), comet.k0 * (comet.c.soft ? 0.55 : 0.8 + 0.2 * glow.intensity)) }
+                        GradientStop { position: 1; color: glow.a(glow.mix(glow.c1, glow.c0, 0.6), comet.c.soft ? 0.55 : 0.8 + 0.2 * glow.intensity) }
+                    }
                     strokeStyle: ShapePath.DashLine
-                    dashPattern: glow.dash(comet.c, comet.c.soft ? 0.35 : 0.2, 1.5); dashOffset: glow.off(comet.c, comet.c.soft ? 0.35 : 0.2, 1.5)
+                    dashPattern: glow.dash(comet.c, 0.27, 1.35); dashOffset: glow.off(comet.c, 0.27, 1.35)
+                    PathSvg { path: glow.d }
+                }
+                ShapePath {
+                    fillColor: "transparent"; strokeWidth: 1.6; capStyle: ShapePath.RoundCap
+                    strokeColor: "transparent"
+                    strokeGradient: LinearGradient {
+                        x1: 0; y1: comet.fadeTop; x2: 0; y2: comet.fadeBottom
+                        GradientStop { position: 0; color: glow.a(Qt.lighter(glow.c0, 1.25), comet.k0 * (comet.c.soft ? 0.5 : 1)) }
+                        GradientStop { position: 1; color: glow.a(Qt.lighter(glow.c0, 1.25), comet.c.soft ? 0.5 : 1) }
+                    }
+                    strokeStyle: ShapePath.DashLine
+                    dashPattern: glow.dash(comet.c, 0.12, 1.6); dashOffset: glow.off(comet.c, 0.12, 1.6)
                     PathSvg { path: glow.d }
                 }
             }
