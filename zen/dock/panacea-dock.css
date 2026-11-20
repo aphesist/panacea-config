@@ -435,3 +435,19 @@
 #urlbar #urlbar-input::placeholder, #urlbar .urlbar-input::placeholder {
   color: color-mix(in srgb, var(--p-dim, #8c8c8c) 70%, transparent) !important;
 }
+
+/* ---------------------------------------------------------------- Zen-only mode
+ * Zen alone on its screen: the Panacea island is the address bar (panacea-dock.uc.js sets
+ * [panacea-solo]). The dock sinks below the window edge and fades; the page keeps its
+ * rounded card and the tab sidebar stays. */
+#urlbar#urlbar {
+  transition: min-width 0.32s var(--dock-ease), max-width 0.32s var(--dock-ease),
+              --dock-field-h 0.32s var(--dock-ease), --dock-pad-y 0.32s var(--dock-ease),
+              --dock-r-out 0.32s var(--dock-ease),
+              translate 0.38s var(--dock-ease), opacity 0.26s var(--dock-ease) !important;
+}
+:root[panacea-solo] #urlbar#urlbar {
+  translate: -50% calc(100% + 40px) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

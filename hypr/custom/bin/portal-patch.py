@@ -12,7 +12,7 @@ back on its own). Re-run by panacea-portal-patch.path after Panacea updates.
 import os, sys
 
 D = os.path.expanduser("~/.config/panacea")
-VERSION = "v16"
+VERSION = "v26"
 TAG_PREFIX = "// panacea-local portal patch "
 TAG = TAG_PREFIX + VERSION
 
@@ -151,14 +151,25 @@ SHELL = [
             }
 """),
     # the island's chat tab is Claude's: "Claude" and its logo
-    ('{page:"chat", title:root.tr("Чат"), icon:0xF0181}', '{page:"chat", title:"Claude", icon:0xF0181}'),
+    ('{page:"chat", title:root.tr("Чат"), icon:0xF0181}', '{page:"chat", title:"Claude", icon:0xF0181}, {page:"zentab", title:"Zen", icon:0xF059F}'),
     ("""IslandTabIcon { anchors.verticalCenter: parent.verticalCenter; width: 19; height: 19; kind: modelData.page === "main" ? "home" : "chat"; tint: root.page === modelData.page ? root.colFg : root.colMuted }""", """IslandTabIcon { anchors.verticalCenter: parent.verticalCenter; width: 19; height: 19; kind: modelData.page === "main" ? "home" : "chat"; tint: root.page === modelData.page ? root.colFg : root.colMuted
-                                        visible: modelData.page !== "chat" || tabClaudeLogo.status !== Image.Ready }
+                                        visible: modelData.page === "chat" && tabClaudeLogo.status !== Image.Ready }
+                        // """ + TAG + """: Home is the filled house, like the Zen-only bar's strip
+                        Text { visible: modelData.page === "main"; anchors.verticalCenter: parent.verticalCenter
+                               width: 19; horizontalAlignment: Text.AlignHCenter
+                               text: String.fromCodePoint(0xF02DC); color: root.page === modelData.page ? root.colFg : root.colMuted
+                               font { family: root.fontFam; pixelSize: 18 } }
                         // """ + TAG + """: the chat tab is Claude's (panacea-claude-bridge): its logo, white like the rest
                         Image { id: tabClaudeLogo; visible: modelData.page === "chat" && status === Image.Ready
                                 anchors.verticalCenter: parent.verticalCenter; width: 17; height: 17
                                 sourceSize: Qt.size(68, 68); fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true
                                 source: "file://" + Quickshell.env("HOME") + "/.config/panacea-claude/claude-logo.svg"
+                                opacity: root.page === modelData.page ? 1 : 0.55 }
+                        // """ + TAG + """: the Zen tab: Zen's circles, white
+                        Image { visible: modelData.page === "zentab" && status === Image.Ready
+                                anchors.verticalCenter: parent.verticalCenter; width: 17; height: 17
+                                sourceSize: Qt.size(68, 68); fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true
+                                source: Qt.resolvedUrl("zen-logo.svg")
                                 opacity: root.page === modelData.page ? 1 : 0.55 }"""),
     # tab switches ease instead of jumping: the active tab widens while its fill fades in,
     # the old one narrows and fades, the label fades (content stays put: the icon keeps
@@ -174,14 +185,14 @@ SHELL = [
                     Behavior on color { ColorAnimation { duration: 240; easing.type: Easing.OutCubic } }
                     Row {
                         anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                        anchors.leftMargin: (40 - (children.length ? children[0].width : 19)) / 2 + (modelData.page === "chat" ? 1 : 0)
+                        anchors.leftMargin: (40 - (children.length ? children[0].width : 19)) / 2 + (modelData.page === "main" ? 0 : 1)
                         spacing: 8"""),
     ("visible: root.page === modelData.page; text: modelData.title;",
      "opacity: root.page === modelData.page ? 1 : 0; Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }\n                               text: modelData.title;"),
     # the page itself slides in from the side of the tab you picked, fading in
     ("            onLoaded: if (item) item.forceActiveFocus()\n",
      """            onLoaded: { if (item) item.forceActiveFocus(); pageEnter(); }   """ + TAG + """: page slide
-            readonly property var tabRank: ({ main: 0, chat: 1, vpn: 2 })
+            readonly property var tabRank: ({ main: 0, chat: 1, zentab: 2, vpn: 3 })
             property string lastTabPage: ""
             onActiveChanged: if (!active) lastTabPage = ""
             transform: Translate { id: pageSlide }
@@ -202,6 +213,7 @@ SHELL = [
     ('    property string vpnCountryName: ""\n',
      '    property string vpnCountryName: ""\n'
      '    readonly property bool vpnIsMullvad: /mullvad/i.test(cfg.vpnPreferredClient || "")   ' + TAG + ': Mullvad page\n'
+     '    property bool zenNewTab: false   // the Zen search page opens a new tab\n'
      '    property bool vpnClassic: false   // "Change VPN client" shows Panacea\'s own page\n'
      '    Connections { target: root; function onPageChanged() { if (root.page !== "vpn") root.vpnClassic = false; } }\n'),
     ('            if (d.clientState) { root.vpnClientState = d.clientState; root.vpnConnected = d.clientState === "connected"; }\n            else if (!root.cfg.vpnPreferredClient)',
@@ -229,13 +241,20 @@ SHELL = [
      '                 : page === "files" ? Math.round((screen ? screen.width : 1920) * 0.78)\n'),
     ('                           : root.page === "files"    ? filesComp\n',
      '                           : root.page === "tasks"    ? tasksComp   ' + TAG + '\n'
+     '                           : root.page === "zen"      ? zenComp   ' + TAG + ': Zen search\n'
+     '                           : root.page === "zentab"   ? zenTabComp   ' + TAG + ': the Zen tab\n'
      '                           : root.page === "files"    ? filesComp\n'),
     ('        Component { id: chatComp; ChatView { sys: root } }\n',
      '        Component { id: chatComp; ChatView { sys: root } }\n'
-     '        Component { id: tasksComp; TasksView { sys: root } }   ' + TAG + '\n'),
+     '        Component { id: tasksComp; TasksView { sys: root } }   ' + TAG + '\n'
+     '        Component { id: zenComp; ZenSearchView { sys: root } }   ' + TAG + ': Zen search\n'
+     '        Component { id: zenTabComp; ZenTabView { sys: root } }   ' + TAG + ': the Zen tab\n'),
     ('        function files(): void { root.togglePage("files"); }\n',
      '        function files(): void { root.togglePage("files"); }\n'
-     '        function tasks(): void { root.togglePage("tasks"); }   ' + TAG + ': task manager\n'),
+     '        function tasks(): void { root.togglePage("tasks"); }   ' + TAG + ': task manager\n'
+     '        // ' + TAG + ': Zen\'s address bar in the island (Panacea for Zen add-on): current tab / new tab\n'
+     '        function zen(): void { root.zenNewTab = false; root.togglePage("zen"); }\n'
+     '        function zenNew(): void { root.zenNewTab = true; root.togglePage("zen"); }\n'),
     # ---- the activity glow (IslandGlow.qml): settings, sources, the layer, the IPC calls
     ('            property int    animBounce: 79     // перелёт осциллятора, %\n',
      '            property int    animBounce: 79     // перелёт осциллятора, %\n'
@@ -405,6 +424,7 @@ SHELL += [
      '            property string claudeBrowserAsk: "actions"   // actions | all | none\n'
      '            property bool   claudeBrowserAutostart: true   // start Claude\'s Zen (claude-zen-sandbox) when needed\n'
      '            property string claudeBrowserPlace: "desktop"  // desktop (workspace 10) | hidden | current\n'
+     '            property string claudeBrowserMode: "space"     // space (a Space in your own Zen) | profile (claude-zen-sandbox)\n'
      '            property string askSource: "auto"             // auto | region | selection\n'
      '            property string askThen: "wait"               // wait | explain\n'),
     ('        pillVault:      "SUPER + SHIFT + P",\n',
@@ -412,7 +432,7 @@ SHELL += [
      '        claudeChat:     "SUPER + C",            ' + TAG + '\n'
      '        askClaude:      "SUPER + SHIFT + C",\n'),
     ('        clock12: false, clockSeconds: false, clockWeekday: true,\n',
-     '        claudeBrowser: true, claudeBrowserAsk: "actions", claudeBrowserAutostart: true, claudeBrowserPlace: "desktop", askSource: "auto", askThen: "wait",   ' + TAG + '\n'
+     '        claudeBrowser: true, claudeBrowserAsk: "actions", claudeBrowserAutostart: true, claudeBrowserPlace: "desktop", claudeBrowserMode: "space", askSource: "auto", askThen: "wait",   ' + TAG + '\n'
      '        clock12: false, clockSeconds: false, clockWeekday: true,\n'),
     ('    property string chatDraft: ""          // ...and its unsent text\n',
      '    property string chatDraft: ""          // ...and its unsent text\n'
@@ -430,6 +450,156 @@ SHELL += [
      '            root.chatAskRev++;\n'
      '            root.page = "chat"; root.expanded = true; root.holdOpen = true;\n'
      '        }\n'),
+]
+
+
+# ---- Zen-only mode (v19): Zen alone on the island's screen (floating windows aside) turns
+# the collapsed island into Zen's address bar (ZenBar.qml), opening the search in place, and
+# tells Zen to hide its dock ($XDG_RUNTIME_DIR/panacea-zen-solo, read by panacea-dock.uc.js,
+# which also sends Zen's address-bar keys here: `ipc call pill zenBar` / `zenBarNew`).
+SHELL += [
+    ('(root.page === "main" || root.page === "chat" || root.page === "vpn")',
+     '(root.page === "main" || root.page === "chat" || root.page === "zentab" || root.page === "vpn")', "all"),
+    ('    property bool zenNewTab: false   // the Zen search page opens a new tab\n',
+     '    property bool zenNewTab: false   // the Zen search page opens a new tab\n'
+     '    // ' + TAG + r''': Zen-only mode
+    property bool zenSolo: false
+    readonly property int zenBarW: Math.round(Math.min((screen ? screen.width : 1920) * 0.4, 720) / 2) * 2
+    readonly property bool zenBarShown: zenSolo && !expanded && !settingsMode && !pillSide && !pillHidden && !wallsOpen
+        && !toastActive && !osdActive && !btToastActive && !wifiToastActive && !acToastActive
+        && !recPickActive && !voxActive && !fileOverIsland
+    property var zenTab: ({})              // Zen's active tab {url, title, host} (panacea-dock.uc.js)
+    function zenOpenIsland(pg) { pageResetTimer.stop(); page = pg || "main"; expanded = true; holdOpen = pg === "chat"; }
+    function zenOpenSearch(nt) { zenNewTab = !!nt; pageResetTimer.stop(); page = "zen"; expanded = true; holdOpen = true; }
+    Process {
+        id: zenSoloProc
+        property bool again: false
+        command: ["sh", "-c", "hyprctl -j clients; echo; echo @@; hyprctl -j monitors"]
+        stdout: StdioCollector { onStreamFinished: root.zenSoloParse(text) }
+        onExited: if (again) { again = false; running = true; }
+    }
+    function zenSoloCheck() { if (zenSoloProc.running) zenSoloProc.again = true; else zenSoloProc.running = true; }
+    function zenSoloParse(text) {
+        var parts = text.split("\n@@\n"), cl, mons;
+        try { cl = JSON.parse(parts[0]); mons = JSON.parse(parts[1]); } catch (e) { return; }
+        var name = root.screen ? root.screen.name : "", mon = null, i;
+        for (i = 0; i < mons.length; i++) if (mons[i].name === name) mon = mons[i];
+        for (i = 0; !mon && i < mons.length; i++) if (mons[i].focused) mon = mons[i];
+        var solo = false, running = false;
+        for (i = 0; i < cl.length; i++) if (cl[i]["class"] === "zen") running = true;
+        root.zenRunning = running;
+        if (mon && mon.activeWorkspace && !(mon.specialWorkspace && mon.specialWorkspace.id)) {
+            var n = 0, zen = false;
+            for (i = 0; i < cl.length; i++) {
+                var c = cl[i];
+                if (!c.mapped || c.hidden || c.floating || !c.workspace || c.workspace.id !== mon.activeWorkspace.id) continue;
+                n++; zen = c["class"] === "zen";
+            }
+            solo = n === 1 && zen;
+        }
+        if (solo && !root.zenSolo) { zenTabFile.reload(); zenIconsFile.reload(); }
+        root.zenSolo = solo;
+    }
+    Timer { id: zenSoloDebounce; interval: 40; onTriggered: root.zenSoloCheck() }
+    Connections {
+        target: Hyprland
+        function onRawEvent(ev) {
+            if (/^(openwindow|closewindow|movewindow|changefloatingmode|workspace|focusedmon|activespecial|moveworkspace|minimized)/.test(ev.name))
+                zenSoloDebounce.restart();
+        }
+    }
+    // Zen hides its dock while this says 1; the pid (this shell) lets it ignore a stale file
+    Process {
+        id: zenSoloWriter
+        property bool again: false
+        onExited: if (again) { again = false; root.zenSoloWrite(); }
+    }
+    function zenSoloWrite() {   // the command is set here: a binding would still hold the old value
+        if (zenSoloWriter.running) { zenSoloWriter.again = true; return; }
+        zenSoloWriter.command = ["sh", "-c", 'printf "%s %s\\n" "$1" "$PPID" > "$XDG_RUNTIME_DIR/panacea-zen-solo"', "_", root.zenSolo ? "1" : "0"];
+        zenSoloWriter.running = true;
+    }
+    onZenSoloChanged: zenSoloWrite()
+    Timer { interval: 400; running: true; onTriggered: { root.zenSoloWrite(); root.zenSoloCheck(); } }
+    FileView {
+        id: zenTabFile
+        path: Quickshell.env("XDG_RUNTIME_DIR") + "/panacea-zen-tab.json"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: { try { root.zenTab = JSON.parse(text()) || ({}); } catch (e) {} }
+    }
+    // the Zen tab (ZenTabView.qml): pinned and recent tabs, and commands back to Zen
+    property bool zenRunning: false
+    property var zenTabs: ({})
+    FileView {
+        id: zenTabsFile
+        path: Quickshell.env("XDG_RUNTIME_DIR") + "/panacea-zen-tabs.json"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: { try { root.zenTabs = JSON.parse(text()) || ({}); } catch (e) {} }
+    }
+    Connections { target: root; function onPageChanged() { if (root.page === "zentab") zenTabsFile.reload(); } }
+    readonly property string zenFocusCmd: "hyprctl dispatch 'hl.dsp.focus({ window = \"class:^(zen)$\" })' >/dev/null 2>&1"
+    function zenCmd(cmd, arg) {   // panacea-dock.uc.js picks it up; a switch brings Zen forward
+        Quickshell.execDetached(["sh", "-c", 'printf "%s\\n" "$1" > "$XDG_RUNTIME_DIR/panacea-zen-cmd"' + (cmd === "select" ? "; " + zenFocusCmd : ""),
+                                 "_", arg ? cmd + " " + arg : cmd]);
+        if (cmd === "select") collapse();
+    }
+    function zenLaunch(args) { Quickshell.execDetached(["zen-browser"].concat(args || [])); collapse(); }
+    function zenOpenApp() {
+        if (zenRunning) Quickshell.execDetached(["sh", "-c", zenFocusCmd]); else Quickshell.execDetached(["zen-browser"]);
+        collapse();
+    }
+    property var zenIcons: ({})            // site icons {host: file} (panacea-dock.uc.js)
+    FileView {
+        id: zenIconsFile
+        path: Quickshell.env("XDG_RUNTIME_DIR") + "/panacea-zen-icons/index.json"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: { try { root.zenIcons = JSON.parse(text()) || ({}); } catch (e) {} }
+    }
+'''),
+    # the bar replaces the clock row, the mascot and the hover-to-open
+    ('                : root.pillSide  ? capsule.evenUp(Math.max(vertCapsule.implicitHeight + 30,\n',
+     '                : root.zenBarShown ? capsule.evenUp(zenBarItem.implicitWidth)   ' + TAG + ': Zen-only mode\n'
+     '                : root.pillSide  ? capsule.evenUp(Math.max(vertCapsule.implicitHeight + 30,\n'),
+    ('                ? toastCapsule.implicitHeight + 24 : root.pillH\n',
+     '                ? toastCapsule.implicitHeight + 24 : root.zenBarShown ? zenBarItem.implicitHeight : root.pillH   ' + TAG + '\n'),
+    # the search opened from the bar keeps the bar's width
+    ('             : (root.expanded && !root.cfg.pillKeepVisible) ? root.panelW\n',
+     '             : (root.expanded && !root.cfg.pillKeepVisible) ? (root.zenSolo && root.page === "zen" ? root.zenBarW : root.panelW)   ' + TAG + '\n'),
+    ('            width: (root.settingsMode ? root.settingsW : root.panelW) - 30\n',
+     '            width: (root.settingsMode ? root.settingsW : root.zenSolo && root.page === "zen" ? root.zenBarW : root.panelW) - 30   ' + TAG + '\n'),
+    ('                     && !root.osdActive && !root.toastActive\n            opacity: root.pillSide ? 0 : (visible ? 1 : 0)\n',
+     '                     && !root.osdActive && !root.toastActive && !root.zenBarShown   ' + TAG + '\n            opacity: root.pillSide ? 0 : (visible ? 1 : 0)\n'),
+    ('        Mascot { id: mascot; sys: root; anchors.centerIn: parent; z: 10; visible: active && !root.pillSide }\n',
+     '        Mascot { id: mascot; sys: root; anchors.centerIn: parent; z: 10; visible: active && !root.pillSide && !root.zenBarShown }   ' + TAG + '\n'),
+    ('if (root.toastActive || root.btToastActive || root.wifiToastActive || root.acToastActive || root.recPickActive || root.voxActive) return;',
+     'if (root.toastActive || root.btToastActive || root.wifiToastActive || root.acToastActive || root.recPickActive || root.voxActive || root.zenBarShown) return;   ' + TAG),
+    ('                     && !root.osdActive && !root.btToastActive && !root.wifiToastActive && !root.acToastActive && !root.recPickActive && !root.voxActive\n            cursorShape: Qt.PointingHandCursor\n            onClicked: capsule.openPanel()\n',
+     '                     && !root.osdActive && !root.btToastActive && !root.wifiToastActive && !root.acToastActive && !root.recPickActive && !root.voxActive\n'
+     '                     && !root.zenBarShown   ' + TAG + '\n'
+     '            cursorShape: Qt.PointingHandCursor\n            onClicked: capsule.openPanel()\n'),
+    ('        // ---- свёрнутое: голосовой ввод',
+     '        // ' + TAG + ': Zen-only mode, the address bar\n'
+     '        ZenBar {\n'
+     '            id: zenBarItem\n'
+     '            anchors.fill: parent\n'
+     '            z: 120\n'
+     '            sys: root\n'
+     '            visible: opacity > 0.01\n'
+     '            opacity: root.zenBarShown ? 1 : 0\n'
+     '            Behavior on opacity { NumberAnimation { duration: root.animFast } }\n'
+     '        }\n\n'
+     '        // ---- свёрнутое: голосовой ввод'),
+    # Zen's address-bar keys (Ctrl+L, Ctrl+K, Ctrl+T...) while its dock is hidden
+    ('        function zenNew(): void { root.zenNewTab = true; root.togglePage("zen"); }\n',
+     '        function zenNew(): void { root.zenNewTab = true; root.togglePage("zen"); }\n'
+     '        function zenBar(): void { root.zenOpenSearch(false); }      ' + TAG + ': Zen-only mode\n'
+     '        function zenBarNew(): void { root.zenOpenSearch(true); }\n'),
 ]
 
 FILES = [
@@ -540,7 +710,10 @@ def plan(path, repl):
     else:
         src = cur
     out = src
-    for old, new in repl:
+    for old, new, *mode in repl:
+        if mode == ["all"] and out.count(old) >= 1:
+            out = out.replace(old, new)
+            continue
         if out.count(old) != 1:
             print(f"portal-patch: anchor not found in {os.path.basename(path)}: {old.strip()[:50]!r}", file=sys.stderr)
             return None
@@ -568,7 +741,7 @@ def main():
         plans.append((path, p))
     changed = False
     here = os.path.dirname(os.path.abspath(__file__))
-    for name in ("TasksView.qml", "TasksChart.qml", "IslandGlow.qml"):   # written first: shell.qml uses them
+    for name in ("TasksView.qml", "TasksChart.qml", "IslandGlow.qml", "ZenSearchView.qml", "ZenBar.qml", "ZenTabView.qml", "zen-logo.svg"):   # written first: shell.qml uses them
         src = os.path.join(here, name)
         if os.path.exists(src):
             body = open(src, encoding="utf-8").read()

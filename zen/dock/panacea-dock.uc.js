@@ -147,6 +147,209 @@
                  { duration: 280, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
     }).observe(bar);
   }
-  if (document.readyState === "complete") hook();
-  else window.addEventListener("load", hook, { once: true });
+  // ------------------------------------------------------------ Zen-only mode
+  // While Zen is alone on its screen, the Panacea island is the address bar (portal-patch.py
+  // in panacea-config). The island writes $XDG_RUNTIME_DIR/panacea-zen-solo ("1 <its pid>");
+  // then the dock sinks away ([panacea-solo], panacea-dock.css) and everything that wants
+  // the address bar (Ctrl+L, Alt+D, F6, Ctrl+K, Ctrl+T, the new-tab buttons) opens the
+  // island instead. The island shows the address from $XDG_RUNTIME_DIR/panacea-zen-tab.json.
+  const RUN = Services.env.get("XDG_RUNTIME_DIR") || "/tmp";
+  const SOLO = PathUtils.join(RUN, "panacea-zen-solo");
+  const TABF = PathUtils.join(RUN, "panacea-zen-tab.json");
+  const QS_DIR = PathUtils.join(Services.dirsvc.get("Home", Ci.nsIFile).path, ".config", "panacea");
+  let solo = false, soloPid = "", soloMtime = 0, soloTick = 0, Subprocess = null;
+  const isSolo = () => solo && document.documentElement.hasAttribute("panacea-dock");
+
+  function island(fn) {
+    try {
+      Subprocess ??= ChromeUtils.importESModule("resource://gre/modules/Subprocess.sys.mjs").Subprocess;
+      Subprocess.call({ command: "/usr/bin/qs", arguments: ["-p", QS_DIR, "ipc", "call", "pill", fn] })
+        .then((p) => p.wait()).catch(() => {});
+    } catch (e) {}
+  }
+  async function alive(pid) {   // the island that wrote the file is still running
+    // (/proc files report size 0, so IOUtils can't read them: just check the process is there)
+    try { return /^\d+$/.test(pid) && await IOUtils.exists(`/proc/${pid}/status`); }
+    catch (e) { return false; }
+  }
+  async function readSolo() {
+    let on = solo;
+    try {
+      const st = await IOUtils.stat(SOLO);
+      if (st.lastModified !== soloMtime || ++soloTick % 8 === 0) {   // re-check the pid every 2 s
+        soloMtime = st.lastModified;
+        const [flag, pid] = (await IOUtils.readUTF8(SOLO)).trim().split(/\s+/);
+        soloPid = pid || "";
+        on = flag === "1" && !!soloPid && await alive(soloPid);
+      }
+    } catch (e) { on = false; }
+    if (on === solo) return;
+    solo = on;
+    document.documentElement.toggleAttribute("panacea-solo", on);
+    if (on && window.gURLBar?.focused) { gURLBar.view?.close(); gBrowser.selectedBrowser.focus(); }
+  }
+  setInterval(readSolo, 250);
+  readSolo();
+
+  // the keys: Browser:OpenLocation (Ctrl+L, Alt+D, F6), Tools:Search (Ctrl+K, Ctrl+E)
+  window.addEventListener("command", (e) => {
+    if (!isSolo()) return;
+    const t = e.target, id = t?.id || "", cmd = t?.getAttribute?.("command") || "";
+    if (/^(Browser:OpenLocation|Tools:Search)$/.test(id) || /^(Browser:OpenLocation|Tools:Search)$/.test(cmd)) {
+      e.stopPropagation(); e.preventDefault();
+      island("zenBar");
+    }
+  }, true);
+
+  // site icons, for the island: $XDG_RUNTIME_DIR/panacea-zen-icons/<host>.<ext>, listed in
+  // index.json ({host: file}). Open tabs, the active one, and your most visited sites.
+  const ICONS = PathUtils.join(RUN, "panacea-zen-icons");
+  const INDEX = PathUtils.join(ICONS, "index.json");
+  const icons = {}, asked = new Set();
+  let indexTimer = null;
+  const hostOf = (spec) => { try { return Services.io.newURI(spec).host; } catch (e) { return ""; } };
+  async function saveIcon(spec) {
+    const host = hostOf(spec);
+    if (!host || !/^https?:/.test(spec)) return "";
+    if (icons[host]) return icons[host];
+    if (asked.has(spec)) return "";
+    asked.add(spec);
+    try {
+      const fav = await PlacesUtils.favicons.getFaviconForPage(Services.io.newURI(spec));
+      if (!fav || !fav.rawData || !fav.rawData.length) return "";
+      const mt = fav.mimeType || "";
+      const ext = /svg/.test(mt) ? "svg" : /png/.test(mt) ? "png" : /jpe?g/.test(mt) ? "jpg"
+                : /webp/.test(mt) ? "webp" : /gif/.test(mt) ? "gif" : "ico";
+      const file = PathUtils.join(ICONS, host.replace(/[^a-z0-9.-]/gi, "_") + "." + ext);
+      await IOUtils.makeDirectory(ICONS, { ignoreExisting: true, permissions: 0o700 });
+      await IOUtils.write(file, new Uint8Array(fav.rawData));
+      icons[host] = file;
+      clearTimeout(indexTimer);
+      indexTimer = setTimeout(() => IOUtils.writeUTF8(INDEX, JSON.stringify(icons) + "\n").catch(() => {}), 300);
+      return file;
+    } catch (e) { return ""; }
+  }
+  async function seedIcons() {
+    try { const old = JSON.parse(await IOUtils.readUTF8(INDEX)); for (const h in old) if (await IOUtils.exists(old[h])) icons[h] = old[h]; } catch (e) {}
+    for (const t of gBrowser.tabs) { const s = t.linkedBrowser?.currentURI?.spec; if (s) await saveIcon(s); }
+    try {
+      const db = await PlacesUtils.promiseDBConnection();
+      const rows = await db.execute(
+        "SELECT url FROM moz_places WHERE frecency > 0 AND url LIKE 'http%' ORDER BY frecency DESC LIMIT 600");
+      const seen = new Set();
+      for (const r of rows) {
+        const u = r.getResultByName("url"), h = hostOf(u);
+        if (!h || seen.has(h)) continue;
+        seen.add(h);
+        await saveIcon(u);
+        if (seen.size >= 250) break;
+      }
+    } catch (e) {}
+  }
+
+  // the active tab, for the island
+  let lastTab = "", tabTimer = null;
+  async function writeTab() {
+    if (Services.wm.getMostRecentWindow("navigator:browser") !== window) return;
+    try {
+      const u = gBrowser.currentURI;
+      let host = "";
+      try { host = u.host; } catch (e) {}
+      const icon = await saveIcon(u.spec);
+      const data = JSON.stringify({ url: u.displaySpec, title: gBrowser.selectedTab?.label || "", host, icon });
+      if (data === lastTab) return;
+      lastTab = data;
+      IOUtils.writeUTF8(TABF, data + "\n").catch(() => {});   // in place: the island watches the file
+    } catch (e) {}
+  }
+  const tabLater = () => { clearTimeout(tabTimer); tabTimer = setTimeout(writeTab, 60); };
+
+  // pinned and recent tabs, for the island's Zen tab ($XDG_RUNTIME_DIR/panacea-zen-tabs.json)
+  const TABS = PathUtils.join(RUN, "panacea-zen-tabs.json");
+  let lastTabs = "", tabsTimer = null;
+  const mainWindow = () => Services.wm.getMostRecentWindow("navigator:browser") === window;
+  async function tabInfo(t) {
+    const spec = t.linkedBrowser?.currentURI?.spec || "";
+    const host = hostOf(spec);
+    return { key: t.linkedPanel || "", title: t.label || spec, url: spec, host,
+             icon: icons[host] || (await saveIcon(spec)) || "",
+             essential: t.hasAttribute("zen-essential"), selected: t === gBrowser.selectedTab };
+  }
+  async function writeTabs() {
+    if (!mainWindow()) return;
+    try {
+      const all = [...gBrowser.tabs].filter((t) => !t.closing && !t.hasAttribute("zen-empty-tab") && !t.hasAttribute("zen-glance-tab"));
+      const pinned = all.filter((t) => t.pinned).slice(0, 24);
+      const recent = all.filter((t) => !t.pinned)
+        .sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0)).slice(0, 8);
+      let closed = 0;
+      try { closed = SessionStore.getClosedTabCountForWindow(window); } catch (e) {}
+      const data = JSON.stringify({ pinned: await Promise.all(pinned.map(tabInfo)),
+                                    recent: await Promise.all(recent.map(tabInfo)), closed });
+      if (data === lastTabs) return;
+      lastTabs = data;
+      IOUtils.writeUTF8(TABS, data + "\n").catch(() => {});
+    } catch (e) {}
+  }
+  const tabsLater = () => { clearTimeout(tabsTimer); tabsTimer = setTimeout(writeTabs, 250); };
+
+  // the island's commands ($XDG_RUNTIME_DIR/panacea-zen-cmd: "select <key>", "close <key>", "undoClose")
+  const CMD = PathUtils.join(RUN, "panacea-zen-cmd");
+  let cmdMtime = null;
+  async function readCmd() {
+    if (!mainWindow()) return;
+    let st;
+    try { st = await IOUtils.stat(CMD); } catch (e) { cmdMtime = 0; return; }
+    if (cmdMtime === null) { cmdMtime = st.lastModified; return; }   // an old command from before
+    if (st.lastModified === cmdMtime) return;
+    cmdMtime = st.lastModified;
+    let line = "";
+    try { line = (await IOUtils.readUTF8(CMD)).trim(); } catch (e) { return; }
+    const i = line.indexOf(" "), cmd = i < 0 ? line : line.slice(0, i), arg = i < 0 ? "" : line.slice(i + 1);
+    const tab = arg ? [...gBrowser.tabs].find((t) => t.linkedPanel === arg) : null;
+    try {
+      if (cmd === "select" && tab) {
+        if (window.gZenWorkspaces?.switchTabIfNeeded) await gZenWorkspaces.switchTabIfNeeded(tab);
+        else gBrowser.selectedTab = tab;
+      } else if (cmd === "close" && tab) gBrowser.removeTab(tab, { animate: true });
+      else if (cmd === "undoClose") window.undoCloseTab?.();
+    } catch (e) {}
+  }
+  setInterval(readCmd, 200);
+
+  function hookSolo() {
+    // new tabs (Ctrl+T, the sidebar's + and the rest) all ask Zen's handleNewTab first
+    const ui = window.gZenUIManager;
+    if (ui?.handleNewTab && !ui.__panaceaSolo) {
+      const orig = ui.handleNewTab;
+      ui.handleNewTab = function (passedURL, ...rest) {
+        if (!passedURL && isSolo()) { island("zenBarNew"); return true; }
+        return orig.call(this, passedURL, ...rest);
+      };
+      ui.__panaceaSolo = true;
+    }
+    // anything else that focuses the hidden bar gets the island instead
+    window.gURLBar?.inputField?.addEventListener("focus", () => {
+      if (!isSolo()) return;
+      setTimeout(() => { gURLBar.view?.close(); gBrowser.selectedBrowser.focus(); island("zenBar"); }, 0);
+    });
+    gBrowser.tabContainer.addEventListener("TabSelect", tabLater);
+    gBrowser.tabContainer.addEventListener("TabAttrModified", (e) => {
+      if (e.detail?.changed?.includes("image")) { const s = e.target.linkedBrowser?.currentURI?.spec; if (s) { asked.delete(s); saveIcon(s); } }
+      if (e.target === gBrowser.selectedTab) tabLater();
+    });
+    gBrowser.addProgressListener({ onLocationChange: tabLater,
+      QueryInterface: ChromeUtils.generateQI(["nsIWebProgressListener", "nsISupportsWeakReference"]) });
+    window.addEventListener("activate", tabLater);
+    for (const ev of ["TabOpen", "TabClose", "TabSelect", "TabPinned", "TabUnpinned", "TabMove"])
+      gBrowser.tabContainer.addEventListener(ev, tabsLater);
+    gBrowser.tabContainer.addEventListener("TabAttrModified", tabsLater);
+    window.addEventListener("activate", tabsLater);
+    tabLater();
+    tabsLater();
+    if (Services.wm.getMostRecentWindow("navigator:browser") === window) setTimeout(seedIcons, 4000);
+  }
+
+  if (document.readyState === "complete") { hook(); hookSolo(); }
+  else window.addEventListener("load", () => { hook(); hookSolo(); }, { once: true });
 })();
