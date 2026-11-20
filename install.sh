@@ -30,7 +30,6 @@ done
 say "Panacea vault <-> Proton Pass bridge, fish, foot"
 put panacea/scripts/custom/vault-proton.py "$CFG/panacea/scripts/custom/vault-proton.py"
 put panacea/scripts/custom/mullvad_control.py "$CFG/panacea/scripts/custom/mullvad_control.py"
-put panacea/scripts/custom/taskman.py "$CFG/panacea/scripts/custom/taskman.py"
 put panacea/scripts/custom/ask_claude.sh "$CFG/panacea/scripts/custom/ask_claude.sh"
 put fish/custom/proton-pass.fish "$CFG/fish/custom/proton-pass.fish"
 put foot/custom.ini "$CFG/foot/custom.ini"
@@ -117,15 +116,9 @@ systemctl --user start panacea-vault-patch.service || true
 
 python3 -I "$CFG/hypr/custom/bin/vault-patch.py" || true
 
-say "Island file picker for every app (file-chooser portal backend)"
-DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
-put portal/panacea.portal "$DATA/xdg-desktop-portal/portals/panacea.portal"
-put portal/org.freedesktop.impl.portal.desktop.panacea.service "$DATA/dbus-1/services/org.freedesktop.impl.portal.desktop.panacea.service"
-put portal/hyprland-portals.conf "$CFG/xdg-desktop-portal/hyprland-portals.conf"
-systemctl --user enable --now panacea-portal-patch.path
-python3 -I "$CFG/hypr/custom/bin/portal-patch.py" || echo "  island picker patch skipped - apps keep the GTK dialog"
-busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus ReloadConfig >/dev/null 2>&1 || true
-systemctl --user try-restart xdg-desktop-portal || true
+say "The island itself (Home, screens, design kit, file picker, settings) is panacea-island"
+if [ -x "$HERE/../panacea-island/install.sh" ]; then bash "$HERE/../panacea-island/install.sh"
+else echo "  not found next to this repo: git clone https://github.com/aphesist/panacea-island, then bash install.sh"; fi
 
 say "Mullvad in the island (VPN page and country button control the mullvad CLI)"
 systemctl --user enable --now panacea-vpn-patch.path
@@ -154,4 +147,5 @@ Done. Still to do once (see README):
   - fingerprint unlock: the PAM file from galaxy-book3-ultra-linux/fingerprint/2-lock-screen-pam.sh
   - Proton Pass: install proton-pass-cli-bin, then  pass-cli login
   - island chat -> Claude: the panacea-claude-bridge repo
+  - the island redesign: the panacea-island repo (run automatically if it sits next to this one)
 EOF

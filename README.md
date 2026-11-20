@@ -9,7 +9,7 @@
 ![Update-safe](https://img.shields.io/badge/survives-Panacea_updates-888888)
 ![License](https://img.shields.io/badge/license-MIT-d71920)
 
-[Screenshots](#screenshots) · [What changes](#what-changes) · [Fresh install](#from-a-fresh-arch-install) · [How patches survive updates](#how-patches-survive-updates)
+[The island](#the-island) · [Screenshots](#screenshots) · [What changes](#what-changes) · [Fresh install](#from-a-fresh-arch-install) · [How patches survive updates](#how-patches-survive-updates)
 
 </div>
 
@@ -22,8 +22,15 @@
 Panacea keeps a handful of folders untouched across updates:
 `hypr/custom/`, `fish/custom/`, `foot/custom.ini` and `panacea/scripts/custom/`.
 Everything here lives in those folders. A few Panacea files are patched in place:
-the lock screen, the vault script and the file manager (for the island file picker). Their patchers are idempotent,
+the lock screen and the vault script. Their patchers are idempotent,
 all-or-nothing, and re-run themselves whenever an update replaces the file.
+
+## The island
+
+The redesigned island (its Home, the Updates, Logs, Screen, Editor, Startup, Open with, file
+picker and task manager screens, the settings and notifications, and the Pk design kit they're
+built from) grew into its own repo: **[panacea-island](https://github.com/aphesist/panacea-island)**.
+`install.sh` here runs its installer when it's cloned next to this repo.
 
 ## Screenshots
 
@@ -48,36 +55,6 @@ Claude subscription.
 <img src="docs/img/claude-chat.gif" width="400" alt="A question typed into the island chat: a read-only step runs on its own, then an approval card for mkdir is allowed and becomes a 'Run a command · Done' row above the reply">
 </p>
 
-### Tabs that slide
-
-Switching Home ↔ Claude slides the page in from the side of the tab you picked,
-and the tab pill stretches across. The model pills (Opus · Sonnet · Haiku) have
-a selector that glides behind the names with a small overshoot.
-
-<img src="docs/img/tabs.gif" width="400" alt="The island switching between Home and the Claude chat, then the model selector sliding between Opus, Sonnet and Haiku">
-
-### Activity glow
-
-A thin light runs along the island's exact outline, flares included, while
-something works: Claude's orange while it thinks, white while the VPN connects,
-and any agent's own colours (`panacea-glow start <name> "#hex,#hex"`, or
-`panacea-glow run <name> "#hex" -- <command>`). On the island attached to the
-top edge it fades out towards both ends, where the island meets the screen;
-outside the light the island stays pure black. It moves with the island as one
-piece. Settings → Motion → *Activity glow*: on/off per source, speed,
-intensity, and the animation:
-
-| Animation | Attached island | Detached island (big pages) |
-|---|---|---|
-| Standard | one stroke end to end, eased, springy | an even, endless orbit |
-| Ping-pong | there and back | a lap one way, then back |
-| Symmetric | fades in at the bottom centre, one stroke up each side | bottom centre to the top, meeting there |
-| Converge | a stroke from each end, meeting at the bottom | top centre to the bottom |
-| Breathing | the whole outline brightens and dims | the same |
-| Wave | a long soft band over a faintly lit edge | the same, looping |
-
-<img src="docs/img/glow.gif" width="680" alt="The collapsed island with a thin glow running along its edge: orange for Claude, then white, then violet and cyan for an agent">
-
 ### Mullvad, in the island
 
 Left-click the island's country button for a Mullvad page in the island's own
@@ -87,28 +64,6 @@ toggles. Right-click still toggles the VPN. No more "VPN disconnected" piles of
 notifications. *Change VPN client* goes back to Panacea's client picker.
 
 <img src="docs/img/mullvad.gif" width="400" alt="The Mullvad page in the island switching from São Paulo to Stockholm and back (addresses masked)">
-
-### Task manager
-
-`Super+Shift+Esc`, like Windows, in the island's style. **Processes**: apps
-grouped with their child processes and icons, then background and system
-processes; right-click for End task, Force kill, Copy PID. **Performance**: this
-machine's real parts (i9-13900H, LPDDR5 at its rated speed, Iris Xe and the RTX
-4070, the NVMe, Wi-Fi, battery health) with live charts and per-thread bars; the
-RTX is only read while it's already awake. **Services**: your user services,
-with Start / Stop / Restart (system ones ask for your password).
-
-<img src="docs/img/tasks.gif" width="820" alt="The task manager: the process tree with app icons, the Performance tab with CPU chart and thread bars, the Services list">
-
-### One file picker, inside the island
-
-The chat's paperclip, and Open/Save dialogs from every app (Zen, Claude
-desktop, Electron and GTK apps, via an xdg-desktop-portal backend), morph the
-island into its own file manager in picker mode, instead of a white GTK
-window tiled behind it. If Panacea isn't running, apps fall back to the GTK
-dialog on their own.
-
-<img src="docs/img/picker.png" width="860" alt="Panacea's file manager in picker mode inside the island, with Cancel and Open buttons">
 
 ### Launcher and calendar
 
@@ -130,12 +85,8 @@ dialog on their own.
 | **Vault** | Panacea's password manager becomes a front-end for **Proton Pass**: it shows logins from every vault, new and edited entries go back to Proton, and a delete only hides the entry. Offline, it falls back to the encrypted local copy | `panacea/scripts/custom/vault-proton.py`, `bin/vault-patch.py` |
 | **Desktop** | Hides hyprpaper's splash quote for good: hyprpaper runs from its own config (`hyprpaper-conf`, written just before it starts from Panacea's saved wallpaper), so Panacea's login rewrite of `hyprpaper.conf` can't race it any more | `bin/hyprpaper-conf`, `systemd/user/panacea-wallpaper.service` |
 | | **The wallpaper always comes back.** hyprpaper runs as its own service that restarts itself, so restarting or crashing the Panacea shell no longer leaves the desktop without a wallpaper (it used to be the shell's child) | `panacea-wallpaper.service`, `bin/after-lock` |
-| | **Approval cards in Panacea's palette.** The island's approval toast had green ✓ / red × circles; now flat Deny / Allow pills (white = primary), matching the chat's approval card, and for Claude the pixel Claude itself, animated (it waves for your attention), centred on the card | `bin/portal-patch.py` |
 | | **Mullvad from the island.** Panacea's VPN control could only drive Happ; any other client just opened its app. An adapter now drives the `mullvad` CLI: pick Mullvad in Choose VPN, then the island's country button and the VPN page's power button connect and disconnect it, and the island shows its real state. `mullvad/` has the setup that keeps the internet working whenever the VPN is off (systemd-resolved DNS, ufw kept, early-boot blocker off), a check script and a rescue script | `panacea/scripts/custom/mullvad_control.py`, `bin/vpn-patch.py`, `mullvad/` |
-| | **Mullvad page in the island**: servers (countries, cities, search, recents) and settings as toggles; left-click opens it, right-click toggles; no notification spam | `bin/MullvadView.qml`, `bin/vpn-patch.py`, `bin/portal-patch.py` |
-| | **Animated tabs**: Home ↔ Claude slides the page and stretches the tab pill | `bin/portal-patch.py` |
-| | **Activity glow** along the island's outline while Claude thinks, the VPN connects or an agent runs; configurable in Settings → Motion; `panacea-glow` for scripts | `bin/IslandGlow.qml`, `bin/panacea-glow`, `bin/portal-patch.py` |
-| | **Task manager** on **Super+Shift+Esc**: process tree with icons and End task, real hardware with live charts, user and system services | `bin/TasksView.qml`, `bin/TasksChart.qml`, `panacea/scripts/custom/taskman.py`, `keybindings.lua` |
+| | **Mullvad page in the island**: servers (countries, cities, search, recents) and settings as toggles; left-click opens it, right-click toggles; no notification spam | `bin/MullvadView.qml`, `bin/vpn-patch.py` (+ panacea-island's `portal-patch.py`) |
 | | **Password prompt in the island's style**: a plain lock, "Password needed" and one simple line saying what it's for ("Enter your password to run X as administrator"), polkit's raw text behind *Details*, flat Cancel / Unlock pills | `bin/auth-patch.py` |
 | | Softer, slower island motion, closer to macOS: 440 ms, 18 % overshoot | `settings.overrides.json` |
 | | Screenshot on **PrtSc** | `settings.overrides.json` |
@@ -146,7 +97,6 @@ dialog on their own.
 | | Window resize moved to **Super+Alt+arrows**, so **Alt+←/→** reach apps again (back/forward in Zen) | Panacea Settings → Shortcuts (Panacea's own `binds_data.lua`, not in this repo) |
 | | Touchpad right-click by pressing the bottom-right corner (as well as a two-finger tap), instead of Panacea's two-finger-press-only *clickfinger* | `general.lua` |
 | | Spotify opens as a normal window (Panacea sends it to the hidden scratchpad) | `windowrules.lua` |
-| **File picker** | One picker, inside the island. Every app's Open/Save dialog (browsers, Electron apps, GTK apps) and the chat's paperclip morph the island into its own file manager in picker mode, with Cancel/Open, a filename box for Save and "Use this folder" for folder picks. Before, apps got a white GTK dialog and the paperclip opened a window that Hyprland tiled behind the island. Falls back to the GTK dialog if Panacea can't answer | `bin/panacea-portal.py`, `bin/portal-patch.py`, `portal/` |
 | **Spotify** | A Spicetify theme in Panacea's *Nothing* palette: pure black, white, one red; JetBrains Mono; rounded flat panels | `spicetify/Themes/Panacea` |
 | | Runs natively on Wayland, so it follows the display scale (under XWayland with `force_zero_scaling` it was drawn at 1×, tiny); Vesktop (Discord) too | `spotify/spotify-flags.conf`, `electron/vesktop-flags.conf` |
 | **Claude desktop** | Uses GNOME Keyring for its sign-in (Electron doesn't recognise Hyprland and fell back to "no keyring", so you had to sign in every launch) | `electron/claude-desktop-flags.conf` |
@@ -214,7 +164,7 @@ Panacea update replaces lock.qml / vault.sh / shell.qml
         │
         ├─ lock.qml   → bin/panacea-lock re-runs lock-patch.py before every lock
         ├─ vault.sh   → panacea-vault-patch.path notices the change → vault-patch.py
-        └─ shell.qml, FilesView.qml → panacea-portal-patch.path → portal-patch.py
+        └─ shell.qml, FilesView.qml, settings → panacea-portal-patch.path → portal-patch.py (panacea-island)
 ```
 
 Each patcher searches for exact anchors in Panacea's code. If an update moved
