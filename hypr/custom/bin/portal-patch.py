@@ -12,7 +12,7 @@ back on its own). Re-run by panacea-portal-patch.path after Panacea updates.
 import os, sys
 
 D = os.path.expanduser("~/.config/panacea")
-VERSION = "v26"
+VERSION = "v27"
 TAG_PREFIX = "// panacea-local portal patch "
 TAG = TAG_PREFIX + VERSION
 
@@ -488,7 +488,14 @@ SHELL += [
         var solo = false, running = false;
         for (i = 0; i < cl.length; i++) if (cl[i]["class"] === "zen") running = true;
         root.zenRunning = running;
-        if (mon && mon.activeWorkspace && !(mon.specialWorkspace && mon.specialWorkspace.id)) {
+        if (root.zenMode === "island") {
+            // island mode (Zen pref panacea.zen.urlbar = "island"): the bar shows whenever Zen
+            // is the focused window on this screen, tiled or floating, alone or not
+            for (i = 0; mon && i < cl.length; i++) {
+                var f = cl[i];
+                if (f["class"] === "zen" && f.focusHistoryID === 0 && f.mapped && !f.hidden && f.monitor === mon.id) solo = true;
+            }
+        } else if (mon && mon.activeWorkspace && !(mon.specialWorkspace && mon.specialWorkspace.id)) {
             var n = 0, zen = false;
             for (i = 0; i < cl.length; i++) {
                 var c = cl[i];
@@ -504,7 +511,8 @@ SHELL += [
     Connections {
         target: Hyprland
         function onRawEvent(ev) {
-            if (/^(openwindow|closewindow|movewindow|changefloatingmode|workspace|focusedmon|activespecial|moveworkspace|minimized)/.test(ev.name))
+            if (/^(openwindow|closewindow|movewindow|changefloatingmode|workspace|focusedmon|activespecial|moveworkspace|minimized)/.test(ev.name)
+                || (root.zenMode === "island" && /^activewindow$/.test(ev.name)))
                 zenSoloDebounce.restart();
         }
     }
@@ -520,6 +528,18 @@ SHELL += [
         zenSoloWriter.running = true;
     }
     onZenSoloChanged: zenSoloWrite()
+    // Zen's address-bar mode, from panacea-dock.uc.js: "dock" (the island is the bar only
+    // while Zen is alone) or "island" (the island is the bar whenever Zen has focus)
+    property string zenMode: "dock"
+    onZenModeChanged: zenSoloCheck()
+    FileView {
+        id: zenModeFile
+        path: Quickshell.env("XDG_RUNTIME_DIR") + "/panacea-zen-mode"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: root.zenMode = String(text() || "").trim() === "island" ? "island" : "dock"
+    }
     Timer { interval: 400; running: true; onTriggered: { root.zenSoloWrite(); root.zenSoloCheck(); } }
     FileView {
         id: zenTabFile

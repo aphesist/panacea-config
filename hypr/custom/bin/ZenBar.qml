@@ -99,8 +99,8 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        anchors.leftMargin: 8
-        anchors.rightMargin: 8
+        anchors.leftMargin: 5
+        anchors.rightMargin: 5
         anchors.bottomMargin: 5
         height: bar.sys.pillH - 10
         radius: height / 2
