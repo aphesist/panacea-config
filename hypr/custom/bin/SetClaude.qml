@@ -11,20 +11,24 @@ ColumnLayout {
     id: page
 
     property var sys
-    property string zilla: "checking"      // on | off | missing | checking
+    property string zilla: "checking"      // on | off | missing | leak | noaddon | checking
+    readonly property bool spaceMode: (page.sys.cfg.claudeBrowserMode || "space") !== "profile"
 
-    Layout.fillWidth: true
-    spacing: 12
-
-    // Claude's own Zen (claude-zen-sandbox): connected? And the guard: none of your own
-    // Zen profiles may have the add-on (bridge.py turns the browser off if one does).
+    // Space mode: is our add-on (claude-zen@aphesist) in your own Zen, and connected?
+    // Profile mode (claude-zen-sandbox): Claude's own Zen connected? And the guard: none of
+    // your own Zen profiles may have Claudezilla (bridge.py turns the browser off if one does).
     Process {
         id: pZilla
-        command: ["sh", "-c",
-            "[ -f \"$HOME/.local/share/claudezilla/mcp/server.js\" ] && [ -d \"$HOME/.config/zen/claude\" ] || { echo missing; exit; }; " +
-            "for e in \"$HOME\"/.config/zen/*/extensions.json; do case \"$e\" in */zen/claude/*) continue;; esac; " +
-            "jq -e '.addons[] | select(.id == \"claudezilla@boot.industries\" and (.pendingUninstall | not))' \"$e\" >/dev/null 2>&1 && { echo leak; exit; }; done; " +
-            "[ -S \"${XDG_RUNTIME_DIR:-/tmp}/claudezilla.sock\" ] && echo on || echo off"]
+        command: ["sh", "-c", page.spaceMode
+            ? "[ -f \"$HOME/.local/share/claudezilla/mcp/server.js\" ] || { echo missing; exit; }; " +
+              "found=; for e in \"$HOME\"/.config/zen/*/extensions.json; do case \"$e\" in */zen/claude/*) continue;; esac; " +
+              "jq -e '.addons[] | select(.id == \"claude-zen@aphesist\" and .active)' \"$e\" >/dev/null 2>&1 && found=1; done; " +
+              "[ -n \"$found\" ] || { echo noaddon; exit; }; " +
+              "[ -S \"${XDG_RUNTIME_DIR:-/tmp}/claudezilla.sock\" ] && echo on || echo off"
+            : "[ -f \"$HOME/.local/share/claudezilla/mcp/server.js\" ] && [ -d \"$HOME/.config/zen/claude\" ] || { echo missing; exit; }; " +
+              "for e in \"$HOME\"/.config/zen/*/extensions.json; do case \"$e\" in */zen/claude/*) continue;; esac; " +
+              "jq -e '.addons[] | select((.id == \"claudezilla@boot.industries\" or .id == \"claude-zen@aphesist\") and (.pendingUninstall | not))' \"$e\" >/dev/null 2>&1 && { echo leak; exit; }; done; " +
+              "[ -S \"${XDG_RUNTIME_DIR:-/tmp}/claudezilla.sock\" ] && echo on || echo off"]
         stdout: StdioCollector { onStreamFinished: page.zilla = text.trim() || "off" }
     }
     Timer { interval: 3000; repeat: true; running: page.visible; triggeredOnStart: true; onTriggered: pZilla.running = true }
@@ -45,9 +49,22 @@ ColumnLayout {
         SetToggle {
             sys: page.sys
             label: "Let Claude use the browser"
-            sub: "In a Zen profile of its own (claude-zen-sandbox): your Zen, its tabs and logins stay out of reach."
+            sub: page.spaceMode ? "In a \"Claude\" Space of your own Zen, signed in as you. It only touches the tabs it opens there."
+                                : "In a Zen profile of its own (claude-zen-sandbox): your Zen, its tabs and logins stay out of reach."
             on: page.sys.cfg.claudeBrowser
             onToggled: value => { page.sys.cfg.claudeBrowser = value; page.sys.saveCfg(); }
+        }
+        SetSelect {
+            sys: page.sys
+            visible: page.sys.cfg.claudeBrowser
+            label: "Where"
+            value: page.spaceMode ? "space" : "profile"
+            options: [{ id: "space", text: "Claude Space" }, { id: "profile", text: "Own profile" }]
+            onPicked: id => { page.sys.cfg.claudeBrowserMode = id; page.sys.saveCfg(); page.zilla = "checking"; }
+        }
+        Note {
+            visible: page.sys.cfg.claudeBrowser && page.spaceMode
+            text: "Its tabs open in the background in your \"Claude\" Space; switch there to watch. Your other tabs only when you ask, and listing or taking one over always shows a card."
         }
         SetSelect {
             sys: page.sys
@@ -67,7 +84,7 @@ ColumnLayout {
         }
         SetSelect {
             sys: page.sys
-            visible: page.sys.cfg.claudeBrowser
+            visible: page.sys.cfg.claudeBrowser && !page.spaceMode
             label: "Opens on"
             value: page.sys.cfg.claudeBrowserPlace || "desktop"
             options: [{ id: "desktop", text: "Desktop 10" }, { id: "hidden", text: "Hidden" }, { id: "current", text: "Current" }]
@@ -76,14 +93,14 @@ ColumnLayout {
                               page.run(["sh", "-c", "sleep 0.6; hyprctl reload >/dev/null"]); }
         }
         Note {
-            visible: page.sys.cfg.claudeBrowser
+            visible: page.sys.cfg.claudeBrowser && !page.spaceMode
             text: (page.sys.cfg.claudeBrowserPlace === "hidden") ? "Out of sight on a hidden workspace; Show brings it up."
                 : (page.sys.cfg.claudeBrowserPlace === "current") ? "Opens wherever you are, like any window."
                 : "Its own desktop (Super+0): go there to watch Claude work. It never pulls you away from what you're doing."
         }
         SetToggle {
             sys: page.sys
-            visible: page.sys.cfg.claudeBrowser
+            visible: page.sys.cfg.claudeBrowser && !page.spaceMode
             label: "Start it when needed"
             sub: "Claude's Zen opens by itself the first time Claude uses the browser."
             on: page.sys.cfg.claudeBrowserAutostart
@@ -102,7 +119,12 @@ ColumnLayout {
                 wrapMode: Text.WordWrap
                 color: page.zilla === "leak" ? page.sys.colFg : page.sys.colMuted
                 font { family: page.sys.fontBody; pixelSize: page.sys.fontSize - 2 }
-                text: page.zilla === "on" ? "Claude's Zen is running and connected"
+                text: page.spaceMode
+                    ? (page.zilla === "on" ? "Connected to your Zen"
+                       : page.zilla === "noaddon" ? "Add-on not installed in your Zen yet: run install.sh from claude-zen-sandbox"
+                       : page.zilla === "missing" ? "Not set up: run install.sh from claude-zen-sandbox"
+                       : page.zilla === "checking" ? "Checking…" : "Not connected: open Zen")
+                    : page.zilla === "on" ? "Claude's Zen is running and connected"
                     : page.zilla === "leak" ? "Off for safety: your own Zen still has Claudezilla. Remove it there (about:addons)."
                     : page.zilla === "missing" ? "Not set up: run install.sh from claude-zen-sandbox"
                     : page.zilla === "checking" ? "Checking…"
@@ -110,20 +132,20 @@ ColumnLayout {
             }
             SetButton {
                 sys: page.sys
-                visible: page.zilla === "off"
+                visible: page.zilla === "off" && !page.spaceMode
                 text: "Start"
                 onClicked: page.run(["systemctl", "--user", "start", "zen-claude.service"])
             }
             SetButton {
                 sys: page.sys
                 text: "Show"
-                visible: page.zilla === "on" && page.sys.cfg.claudeBrowserPlace !== "current"
+                visible: page.zilla === "on" && !page.spaceMode && page.sys.cfg.claudeBrowserPlace !== "current"
                 onClicked: page.run(["hyprctl", "dispatch", page.sys.cfg.claudeBrowserPlace === "hidden"
                                      ? "hl.dsp.workspace.toggle_special(\"claude\")" : "hl.dsp.focus({ workspace = 10 })"])
             }
             SetButton {
                 sys: page.sys
-                visible: page.zilla === "on"
+                visible: page.zilla === "on" && !page.spaceMode
                 text: "Quit"
                 onClicked: page.run(["systemctl", "--user", "stop", "zen-claude.service"])
             }

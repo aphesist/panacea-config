@@ -12,7 +12,7 @@ back on its own). Re-run by panacea-portal-patch.path after Panacea updates.
 import os, sys
 
 D = os.path.expanduser("~/.config/panacea")
-VERSION = "v27"
+VERSION = "v28"
 TAG_PREFIX = "// panacea-local portal patch "
 TAG = TAG_PREFIX + VERSION
 
@@ -607,12 +607,50 @@ SHELL += [
      '        // ' + TAG + ': Zen-only mode, the address bar\n'
      '        ZenBar {\n'
      '            id: zenBarItem\n'
-     '            anchors.fill: parent\n'
+     '            // pinned to the top at its own size: when the island opens or closes around it, it\n'
+     '            // fades in place instead of riding the growing panel down\n'
+     '            anchors.top: parent.top\n'
+     '            anchors.horizontalCenter: parent.horizontalCenter\n'
+     '            width: implicitWidth\n'
+     '            height: implicitHeight\n'
      '            z: 120\n'
      '            sys: root\n'
      '            visible: opacity > 0.01\n'
      '            opacity: root.zenBarShown ? 1 : 0\n'
-     '            Behavior on opacity { NumberAnimation { duration: root.animFast } }\n'
+     '            // out at once (the page takes over), back only once the island has shrunk to it\n'
+     '            Behavior on opacity { SequentialAnimation {\n'
+     '                PauseAnimation { duration: root.zenBarShown ? Math.round(root.animMs * 0.55) : 0 }\n'
+     '                NumberAnimation { duration: root.zenBarShown ? root.animFast : Math.min(90, root.animFast) }\n'
+     '            } }\n'
+     '        }\n\n'
+     '        // ' + TAG + ': a sideways touchpad swipe on the open island changes tab (one per swipe;\n'
+     '        // fingers left = the next tab, like a carousel following them). Only sideways scrolls\n'
+     '        // are taken; everything else (clicks, vertical scrolling) passes through.\n'
+     '        MouseArea {\n'
+     '            id: tabSwipe\n'
+     '            parent: (root.cfg.pillKeepVisible && root.expanded && !root.settingsMode) ? detachedPanel : capsule\n'
+     '            anchors.fill: parent\n'
+     '            z: 498\n'
+     '            acceptedButtons: Qt.NoButton\n'
+     '            readonly property var order: ["main", "chat", "zentab", "vpn"]\n'
+     '            enabled: root.expanded && !root.settingsMode && order.indexOf(root.page) >= 0\n'
+     '            property real acc: 0\n'
+     '            property bool spent: false\n'
+     '            Timer { id: swipeQuiet; interval: 260; onTriggered: { tabSwipe.acc = 0; tabSwipe.spent = false; } }\n'
+     '            onWheel: wheel => {\n'
+     '                var dx = wheel.pixelDelta.x !== 0 ? wheel.pixelDelta.x : wheel.angleDelta.x / 4;\n'
+     '                var dy = wheel.pixelDelta.y !== 0 ? wheel.pixelDelta.y : wheel.angleDelta.y / 4;\n'
+     '                if (Math.abs(dx) <= Math.abs(dy) && !spent && Math.abs(acc) < 4) { wheel.accepted = false; return; }\n'
+     '                swipeQuiet.restart();\n'
+     '                if (spent) return;\n'
+     '                acc += dx;\n'
+     '                if (Math.abs(acc) < 70) return;\n'
+     '                var i = order.indexOf(root.page) + (acc < 0 ? 1 : -1);\n'
+     '                spent = true;\n'
+     '                if (i < 0 || i >= order.length || !root.pageEnabled(order[i])) return;\n'
+     '                root.page = order[i];\n'
+     '                root.holdOpen = order[i] === "chat" || order[i] === "vpn";\n'
+     '            }\n'
      '        }\n\n'
      '        // ---- свёрнутое: голосовой ввод'),
     # Zen's address-bar keys (Ctrl+L, Ctrl+K, Ctrl+T...) while its dock is hidden
