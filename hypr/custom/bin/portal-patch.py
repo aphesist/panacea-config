@@ -12,7 +12,7 @@ back on its own). Re-run by panacea-portal-patch.path after Panacea updates.
 import os, sys
 
 D = os.path.expanduser("~/.config/panacea")
-VERSION = "v30"
+VERSION = "v46"
 TAG_PREFIX = "// panacea-local portal patch "
 TAG = TAG_PREFIX + VERSION
 
@@ -607,12 +607,12 @@ SHELL += [
      '        // ' + TAG + ': Zen-only mode, the address bar\n'
      '        ZenBar {\n'
      '            id: zenBarItem\n'
-     '            // pinned to the top at its own size: when the island opens or closes around it, it\n'
-     '            // fades in place instead of riding the growing panel down\n'
+     '            // laid out on the island\'s animated shape, never on its own target size, so nothing\n'
+     '            // in it is ever cut by a corner while the island morphs (DESIGN.md, "Morphing")\n'
      '            anchors.top: parent.top\n'
      '            anchors.horizontalCenter: parent.horizontalCenter\n'
-     '            width: implicitWidth\n'
-     '            height: implicitHeight\n'
+     '            width: parent.width\n'
+     '            height: parent.height\n'
      '            z: 120\n'
      '            sys: root\n'
      '            visible: opacity > 0.01\n'
@@ -787,6 +787,504 @@ MOTION = [
 ]
 
 
+# the collapsed island, roomier (Settings > Island): the workspace dots can live in the screen's
+# top-left corner instead (same dots, outside the island), the clock then takes the island's left
+# edge, and the keyboard layout can leave the island; the mascot keeps the middle to itself
+SHELL += [
+    ("            property bool   systemLoadOnIsland: false\n",
+     "            property bool   systemLoadOnIsland: false\n"
+     "            property bool   wsCorner: false     " + TAG + ": workspace dots in the screen's top-left corner\n"
+     "            property bool   kbOnIsland: true    " + TAG + ": the keyboard layout on the collapsed island\n"),
+    ("            readonly property real armGap: 22\n",
+     "            readonly property real armGap: 22\n"
+     "            // " + TAG + ": something else sits at the left edge (recording, weather): the clock goes after it\n"
+     "            readonly property bool leftBusy: root.recActive || (root.weatherReady && root.cfg.weatherOnIsland)\n"),
+    ("                    Layout.preferredWidth: Math.max(wsRow.implicitWidth, nothingCapsule.wsReserve)\n",
+     "                    visible: !root.cfg.wsCorner   " + TAG + ": in the corner instead\n"
+     "                    Layout.preferredWidth: Math.max(wsRow.implicitWidth, nothingCapsule.wsReserve)\n"),
+    ("                anchors.centerIn: parent\n"
+     "                anchors.horizontalCenterOffset: mascot.active ? -80 : 0\n"
+     "                Behavior on anchors.horizontalCenterOffset { enabled: !root.expanded && capsule.height <= root.pillH + 2; NumberAnimation { duration: root.animMs; easing.type: Easing.InOutCubic } }\n",
+     "                anchors.verticalCenter: parent.verticalCenter\n"
+     "                // " + TAG + ": with the workspaces in the corner the clock takes the island's left edge\n"
+     "                x: root.cfg.wsCorner ? (nothingCapsule.leftBusy ? nLeft.implicitWidth + 10 : 0)\n"
+     "                                     : (parent.width - width) / 2 + (mascot.active ? -80 : 0)\n"
+     "                Behavior on x { enabled: !root.expanded && capsule.height <= root.pillH + 2; NumberAnimation { duration: root.animMs; easing.type: Easing.InOutCubic } }\n"),
+    ("                    value: root.kbLayout\n",
+     "                    visible: root.cfg.kbOnIsland   " + TAG + "\n"
+     "                    value: root.kbLayout\n"),
+    ("PanelWindow {\n    id: wallFadeWin\n",
+     "// " + TAG + ": the workspace dots in the screen's top-left corner (Settings > Island > Workspaces in\n"
+     "// the corner): the island's own dots, same look and clicks, level with the island's middle\n"
+     "PanelWindow {\n"
+     "    id: wsCornerWin\n"
+     "    screen: root.screen\n"
+     "    anchors { top: true; left: true }\n"
+     "    implicitWidth: wsCornerRow.implicitWidth + 2 * wsCornerRow.x\n"
+     "    implicitHeight: root.pillH\n"
+     "    color: \"transparent\"\n"
+     "    exclusionMode: ExclusionMode.Ignore\n"
+     "    WlrLayershell.layer: WlrLayer.Top\n"
+     "    WlrLayershell.namespace: \"panacea-workspaces\"\n"
+     "    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None\n"
+     "    visible: root.cfg.wsCorner && root.cfg.pillPos === \"top\" && !root.fullscreenActive && !root.pillHidden\n"
+     "    Row {\n"
+     "        id: wsCornerRow\n"
+     "        x: 22\n"
+     "        anchors.verticalCenter: parent.verticalCenter\n"
+     "        spacing: 8\n"
+     "        Repeater {\n"
+     "            model: root.wsList\n"
+     "            Rectangle {\n"
+     "                id: wsDot\n"
+     "                required property var modelData\n"
+     "                readonly property bool here: modelData === root.wsId\n"
+     "                property bool settled: false\n"
+     "                Component.onCompleted: settled = true\n"
+     "                anchors.verticalCenter: parent.verticalCenter\n"
+     "                width: here ? 17 : 6\n"
+     "                height: 6\n"
+     "                radius: 3\n"
+     "                color: root.colFg\n"
+     "                opacity: here ? 1 : (wsDotMa.containsMouse ? 0.6 : 0.3)\n"
+     "                Behavior on width { enabled: wsDot.settled; NumberAnimation { duration: root.animMs; easing.type: Easing.OutCubic } }\n"
+     "                Behavior on opacity { enabled: wsDot.settled; NumberAnimation { duration: root.animFast } }\n"
+     "                MouseArea {\n"
+     "                    id: wsDotMa\n"
+     "                    anchors.fill: parent\n"
+     "                    anchors.margins: -5\n"
+     "                    hoverEnabled: true\n"
+     "                    cursorShape: Qt.PointingHandCursor\n"
+     "                    onClicked: root.gotoWorkspace(wsDot.modelData)\n"
+     "                }\n"
+     "            }\n"
+     "        }\n"
+     "    }\n"
+     "}\n\n"
+     "PanelWindow {\n    id: wallFadeWin\n"),
+]
+
+ISLAND_SETTINGS = [
+    ("            on: page.sys.cfg.systemLoadOnIsland\n"
+     "            onToggled: value => { page.sys.cfg.systemLoadOnIsland = value; page.sys.saveCfg(); }\n"
+     "        }\n",
+     "            on: page.sys.cfg.systemLoadOnIsland\n"
+     "            onToggled: value => { page.sys.cfg.systemLoadOnIsland = value; page.sys.saveCfg(); }\n"
+     "        }\n\n"
+     "        // " + TAG + ": a roomier island\n"
+     "        SetToggle {\n"
+     "            sys: page.sys\n"
+     "            label: \"Workspaces in the corner\"\n"
+     "            sub: \"The workspace dots sit in the screen's top-left corner instead of the island, and the clock moves to the island's left edge.\"\n"
+     "            on: page.sys.cfg.wsCorner\n"
+     "            onToggled: value => { page.sys.cfg.wsCorner = value; page.sys.saveCfg(); }\n"
+     "        }\n\n"
+     "        SetToggle {\n"
+     "            sys: page.sys\n"
+     "            label: \"Keyboard layout on the island\"\n"
+     "            sub: \"Show the current keyboard layout next to Wi-Fi on the collapsed island.\"\n"
+     "            on: page.sys.cfg.kbOnIsland\n"
+     "            onToggled: value => { page.sys.cfg.kbOnIsland = value; page.sys.saveCfg(); }\n"
+     "        }\n"),
+]
+
+
+# every item on the collapsed island can be switched off (Settings > Island > On the island)
+SHELL += [
+    ("            property bool   kbOnIsland: true    " + TAG + ": the keyboard layout on the collapsed island\n",
+     "            property bool   kbOnIsland: true    " + TAG + ": the keyboard layout on the collapsed island\n"
+     "            property bool   islClock: true      " + TAG + ": the clock on the collapsed island\n"
+     "            property bool   islNet: true        " + TAG + ": Wi-Fi / cable\n"
+     "            property bool   islVolume: true     " + TAG + ": volume icon and number\n"
+     "            property bool   islBattery: true    " + TAG + ": battery icon and number\n"),
+    ("                    visible: root.wiredOn\n                    color: root.colFg\n                }\n                Text {\n                    Layout.alignment: Qt.AlignVCenter\n                    visible: !root.wiredOn\n",
+     "                    visible: root.wiredOn && root.cfg.islNet   " + TAG + "\n                    color: root.colFg\n                }\n                Text {\n                    Layout.alignment: Qt.AlignVCenter\n                    visible: !root.wiredOn && root.cfg.islNet   " + TAG + "\n"),
+    ("                RowLayout {\n                    spacing: 6\n\n                    Text {\n                        Layout.alignment: Qt.AlignVCenter\n                        text: !root.sinkAudio ?",
+     "                RowLayout {\n                    spacing: 6\n                    visible: root.cfg.islVolume   " + TAG + "\n\n                    Text {\n                        Layout.alignment: Qt.AlignVCenter\n                        text: !root.sinkAudio ?"),
+    ("                RowLayout {\n                    spacing: 6\n                    visible: root.batteryPresent\n",
+     "                RowLayout {\n                    spacing: 6\n                    visible: root.batteryPresent && root.cfg.islBattery   " + TAG + "\n"),
+    ("                value: root.timeText\n                size: root.dotHClock\n",
+     "                visible: root.cfg.islClock   " + TAG + "\n                value: root.timeText\n                size: root.dotHClock\n"),
+]
+
+# ---- Morphing (v34): one spring (PkMorph.qml, integrated per frame) drives the island's width,
+# height and all four corners, so the corners match the edges on every frame, a target that
+# changes mid-flight bends the motion instead of restarting it, and it moves on every 120 Hz
+# frame. What lives inside a morphing shape fades by the room the shape has (DESIGN.md).
+SHELL += [
+    ("        width: root.settingsMode ? root.settingsW\n",
+     "        width: morphW.value   " + TAG + ": morphing (PkMorph)\n"
+     "        readonly property real targetW: root.settingsMode ? root.settingsW\n"),
+    ("        height: Math.min(targetH, root.height - root.gap * 2)\n",
+     "        height: morphH.value   " + TAG + "\n"
+     "        readonly property real targetHH: Math.min(targetH, root.height - root.gap * 2)\n"),
+    ("        topLeftRadius:     root.pillAtTop || root.pillAtLeft  ? edgeR : freeR\n"
+     "        topRightRadius:    root.pillAtTop || root.pillAtRight ? edgeR : freeR\n"
+     "        bottomLeftRadius:  root.pillAtBottom || root.pillAtLeft  ? edgeR : freeR\n"
+     "        bottomRightRadius: root.pillAtBottom || root.pillAtRight ? edgeR : freeR\n"
+     "        Behavior on topLeftRadius  { NumberAnimation { duration: root.animMs; easing.type: Easing.InOutCubic } }\n"
+     "        Behavior on topRightRadius { NumberAnimation { duration: root.animMs; easing.type: Easing.InOutCubic } }\n",
+     "        topLeftRadius:     morphTL.value   " + TAG + "\n"
+     "        topRightRadius:    morphTR.value\n"
+     "        bottomLeftRadius:  morphBL.value\n"
+     "        bottomRightRadius: morphBR.value\n"
+     + '        PkMorph { id: morphW; to: capsule.targetW; ms: root.animMs; bounce: root.animBounce; still: root.noMotion }\n        PkMorph { id: morphH; to: capsule.targetHH; ms: root.animMs; bounce: root.animBounce; still: root.noMotion }\n        PkMorph { id: morphTL; to: root.pillAtTop || root.pillAtLeft ? capsule.edgeR : capsule.freeR; ms: root.animMs; bounce: root.animBounce; still: root.noMotion }\n        PkMorph { id: morphTR; to: root.pillAtTop || root.pillAtRight ? capsule.edgeR : capsule.freeR; ms: root.animMs; bounce: root.animBounce; still: root.noMotion }\n        PkMorph { id: morphBL; to: root.pillAtBottom || root.pillAtLeft ? capsule.edgeR : capsule.freeR; ms: root.animMs; bounce: root.animBounce; still: root.noMotion }\n        PkMorph { id: morphBR; to: root.pillAtBottom || root.pillAtRight ? capsule.edgeR : capsule.freeR; ms: root.animMs; bounce: root.animBounce; still: root.noMotion }\n'),
+    ("""        Behavior on width {
+            NumberAnimation {
+                duration: root.animMs
+                easing.type: root.animBounce > 0 ? Easing.OutBack : Easing.InOutCubic
+                easing.overshoot: root.easeOvershoot
+            }
+        }
+        Behavior on height {
+            NumberAnimation {
+                duration: root.morphing ? root.animMs : root.animQuick
+                easing.type: root.animBounce > 0 ? Easing.OutBack
+                           : root.morphing ? Easing.InOutCubic : Easing.OutCubic
+                easing.overshoot: root.easeOvershoot
+            }
+        }
+        Behavior on bottomLeftRadius  { NumberAnimation { duration: root.animMs; easing.type: Easing.InOutCubic } }
+        Behavior on bottomRightRadius { NumberAnimation { duration: root.animMs; easing.type: Easing.InOutCubic } }
+""", "        // " + TAG + ": width, height and corners morph through PkMorph (above)\n"),
+    # the detached panel's height
+    ("        height: (root.cfg.pillKeepVisible && !root.settingsMode && (root.expanded || opacity > 0.005))\n",
+     "        height: morphDH.value   " + TAG + "\n"
+     "        PkMorph { id: morphDH; to: detachedPanel.targetDH; ms: root.animMs; bounce: root.animBounce; still: root.noMotion }\n"
+     "        readonly property real targetDH: (root.cfg.pillKeepVisible && !root.settingsMode && (root.expanded || opacity > 0.005))\n"),
+    ("        Behavior on height { NumberAnimation { duration: root.animQuick; easing.type: Easing.OutCubic } }\n", ""),
+    # the shortcuts window grows out of the island: one spring per edge, the corner derived
+    ("""            x: root.keysWindowOpen ? (parent.width - fullW) / 2 : root.pillRectX
+            y: root.keysWindowOpen ? (parent.height - fullH) / 2 : root.pillRectY
+            width:  root.keysWindowOpen ? fullW : Math.max(8, root.pillRectW)
+            height: root.keysWindowOpen ? fullH : Math.max(8, root.pillRectH)
+            radius: root.keysWindowOpen ? 26 : Math.min(width, height) / 2
+
+            Behavior on x      { NumberAnimation { duration: root.animMs; easing.type: Easing.OutQuint } }
+            Behavior on y      { NumberAnimation { duration: root.animMs; easing.type: Easing.OutQuint } }
+            Behavior on width  { NumberAnimation { duration: root.animMs; easing.type: Easing.OutQuint } }
+            Behavior on height { NumberAnimation { duration: root.animMs; easing.type: Easing.OutQuint } }
+            Behavior on radius { NumberAnimation { duration: root.animMs; easing.type: Easing.OutQuint } }
+""",
+     "            x: keysX.value   " + TAG + ": PkMorph, the corner derived from the size\n"
+     "            y: keysY.value\n"
+     "            width: keysW.value\n"
+     "            height: keysH.value\n"
+     "            radius: Math.min(26, Math.min(width, height) / 2)\n"
+     "            PkMorph { id: keysX; to: root.keysWindowOpen ? (keysCard.parent.width - keysCard.fullW) / 2 : root.pillRectX; ms: root.animMs; still: root.noMotion }\n"
+     "            PkMorph { id: keysY; to: root.keysWindowOpen ? (keysCard.parent.height - keysCard.fullH) / 2 : root.pillRectY; ms: root.animMs; still: root.noMotion }\n"
+     "            PkMorph { id: keysW; to: root.keysWindowOpen ? keysCard.fullW : Math.max(8, root.pillRectW); ms: root.animMs; still: root.noMotion }\n"
+     "            PkMorph { id: keysH; to: root.keysWindowOpen ? keysCard.fullH : Math.max(8, root.pillRectH); ms: root.animMs; still: root.noMotion }\n"),
+    # a page inside the island is laid out at the panel's final width; it shows only as far as
+    # the island already has room for it, so no frame shows it cut at the sides
+    ("            opacity: root.expanded ? 1 : 0\n"
+     "            Behavior on opacity {\n"
+     "                NumberAnimation { duration: root.expanded ? root.animFast : 90; easing.type: Easing.OutCubic }\n"
+     "            }\n",
+     "            opacity: shown * room   " + TAG + ": fades by room\n"
+     "            property real shown: root.expanded ? 1 : 0\n"
+     "            Behavior on shown {\n"
+     "                NumberAnimation { duration: root.expanded ? root.animFast : 90; easing.type: Easing.OutCubic }\n"
+     "            }\n"
+     "            readonly property real room: parent ? Math.pow(Math.max(0, Math.min(1, (parent.width - width - 4) / 24)), 2) : 0\n"),
+]
+
+# ---- The design kit (v36): hypr/custom/ui/Pk*.qml are copied next to shell.qml; the root holds
+# the one theme instance every page and Pk component reads (`sys.pk`). See ui/DESIGN.md.
+SHELL += [
+    ('    property string vpnCountry: "--"\n',
+     '    readonly property PkTheme pk: PkTheme { sys: root }   ' + TAG + ': design kit\n'
+     '    property string vpnCountry: "--"\n'),
+]
+
+# ---- Home (v37): HomeView.qml, built from the kit, takes the pages ControlsView had (main, wifi,
+# netmenu, bt, battery, traymenu) while cfg.pkHome is on; the top-right button becomes the gear.
+SHELL += [
+    ("            property bool   islBattery: true    " + TAG + ": battery icon and number\n",
+     "            property bool   islBattery: true    " + TAG + ": battery icon and number\n"
+     "            property bool   pkHome: true        " + TAG + ": the kit's Home instead of ControlsView\n"),
+    ("        Component { id: controlsComp; ControlsView { sys: root } }\n",
+     "        Component { id: controlsComp; Loader {   " + TAG + ": Home from the kit, or the classic panel\n"
+     "            function goBack() { return !!(item && typeof item.goBack === \"function\" && item.goBack()); }\n"
+     "            onLoaded: item.forceActiveFocus()\n"
+     "            sourceComponent: root.cfg.pkHome ? homeComp : classicControlsComp } }\n"
+     "        Component { id: homeComp; HomeView { sys: root } }\n"
+     "        Component { id: classicControlsComp; ControlsView { sys: root } }\n"),
+    ('            Text { anchors.centerIn: parent; text: root.vpnBusy ? "···" : root.vpnCountry; color: root.vpnConnected ? root.colBg : root.colFg; font { family: root.fontBody; pixelSize: 12; bold: true } }\n',
+     '            Text { visible: !root.cfg.pkHome; anchors.centerIn: parent; text: root.vpnBusy ? "···" : root.vpnCountry; color: root.vpnConnected ? root.colBg : root.colFg; font { family: root.fontBody; pixelSize: 12; bold: true } }\n'
+     '            // ' + TAG + ': with the kit\'s Home the VPN lives in its tile; this is the settings gear\n'
+     '            Rectangle { visible: root.cfg.pkHome; anchors.fill: parent; radius: width / 2; z: 2\n'
+     '                color: gearMa.containsMouse ? root.pk.hover : "#000000"\n'
+     '                PkIcon { sys: root; anchors.centerIn: parent; name: "gear-six"; size: root.pk.iMd; color: gearMa.containsMouse ? root.pk.fg : root.pk.soft }\n'
+     '                MouseArea { id: gearMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor\n'
+     '                            onClicked: { root.settingsTab = 0; root.togglePage("settings"); } } }\n'
+     '            // power, beside the gear on every tab\n'
+     '            Rectangle { visible: root.cfg.pkHome; x: -40; width: parent.width; height: parent.height; radius: width / 2; z: 2\n'
+     '                color: powerMa.containsMouse ? root.pk.hover : "transparent"\n'
+     '                PkIcon { sys: root; anchors.centerIn: parent; name: "power"; size: root.pk.iMd; color: powerMa.containsMouse ? root.pk.fg : root.pk.soft }\n'
+     '                MouseArea { id: powerMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor\n'
+     '                            onClicked: root.togglePage("power") } }\n'
+     '            // notifications: a bell, with a red dot while any are waiting\n'
+     '            Rectangle { visible: root.cfg.pkHome && root.cfg.featNotifications; x: -80; width: parent.width; height: parent.height; radius: width / 2; z: 2\n'
+     '                readonly property bool waiting: root.notifications && root.notifications.count > 0\n'
+     '                color: bellMa.containsMouse || root.page === "notif" ? root.pk.hover : "transparent"\n'
+     '                PkIcon { sys: root; anchors.centerIn: parent; name: root.dnd ? "bell-slash" : "bell"; size: root.pk.iMd; filled: root.page === "notif"\n'
+     '                         color: bellMa.containsMouse || root.page === "notif" ? root.pk.fg : root.pk.soft }\n'
+     '                Rectangle { visible: parent.waiting; x: parent.width / 2 + 3; y: 7; width: 8; height: 8; radius: 4\n'
+     '                            color: root.pk.accent; border.width: 2; border.color: "#000000" }\n'
+     '                MouseArea { id: bellMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor\n'
+     '                            onClicked: root.togglePage("notif") } }\n'),
+]
+
+# ---- System screens (v38): island pages built from the kit. Each is a page name, a component
+# and an IPC call (`qs -p ~/.config/panacea ipc call pill <name>`).
+SCREENS = [("updates", "UpdatesView"), ("logs", "LogsView"), ("screen", "ScreenView"), ("editor", "EditorView"), ("startup", "StartupView")]
+SHELL += [
+    ('                           : root.page === "agents"   ? agentsComp\n',
+     ''.join('                           : root.page === "%s" ? %sComp   ' % (n, n) + TAG + '\n' for n, _ in SCREENS)
+     + '                           : root.page === "agents"   ? agentsComp\n'),
+    ('        Component { id: controlsComp; Loader {',
+     ''.join('        Component { id: %sComp; %s { sys: root } }   ' % (n, v) + TAG + '\n' for n, v in SCREENS)
+     + '        Component { id: controlsComp; Loader {'),
+    ('        function settings(): void { root.settingsTab = 0; root.togglePage("settings"); }\n',
+     '        function settings(): void { root.settingsTab = 0; root.togglePage("settings"); }\n'
+     + ''.join('        function %s(): void { root.togglePage("%s"); }   ' % (n, n) + TAG + '\n' for n, _ in SCREENS)),
+]
+
+# ---- Editor (v42): the shell keeps the editor's file and unsaved buffer (EditorView.qml),
+# the page is wider than the panel, `ipc call pill edit <path>` opens a file.
+SHELL += [
+    ("            property bool   pkHome: true        " + TAG + ": the kit's Home instead of ControlsView\n",
+     "            property bool   pkHome: true        " + TAG + ": the kit's Home instead of ControlsView\n"
+     "            property var    editorRecent: []    " + TAG + ": the editor's recent files\n"),
+    ('    readonly property PkTheme pk: PkTheme { sys: root }   ' + TAG + ': design kit\n',
+     '    readonly property PkTheme pk: PkTheme { sys: root }   ' + TAG + ': design kit\n'
+     '    property string editorPath: ""       // ' + TAG + ': the editor\n'
+     '    property string editorBuffer: ""\n'
+     '    property bool editorDirty: false\n'
+     '    readonly property int editorW: Math.round(Math.min((screen ? screen.width : 1920) * 0.52, 980) / 2) * 2\n'
+     '    function editorOpen(p) {\n'
+     '        p = String(p || "").replace(/^file:\\/\\//, "");\n'
+     '        if (p && p !== editorPath) { editorPath = decodeURIComponent(p); editorBuffer = ""; editorDirty = false; }\n'
+     '        pageResetTimer.stop(); page = "editor"; expanded = true; holdOpen = true;\n'
+     '    }\n'),
+    ('root.zenSolo && root.page === "zen" ? root.zenBarW : root.panelW',
+     'root.page === "editor" ? root.editorW : root.zenSolo && root.page === "zen" ? root.zenBarW : root.panelW', "all"),
+    ('        function settings(): void { root.settingsTab = 0; root.togglePage("settings"); }\n',
+     '        function settings(): void { root.settingsTab = 0; root.togglePage("settings"); }\n'
+     '        function edit(path: string): void { root.editorOpen(path); }   ' + TAG + '\n'),
+]
+
+# ---- Open with (v44): the AppChooser portal (panacea-portal.py) asks the island which app opens
+# a file (AppChooserView.qml). The request waits on the root; leaving the page or folding the
+# island answers "cancelled", so the app never hangs.
+SHELL += [
+    ('    property bool editorDirty: false\n',
+     '    property bool editorDirty: false\n'
+     '    property var appChoose: null         // ' + TAG + ': {id, choices, type, target, last, app} from the portal\n'
+     '    function chooseAppStart(spec) {\n'
+     '        if (root.appChoose) root.endAppChoose("");\n'
+     '        pageResetTimer.stop(); root.appChoose = spec;\n'
+     '        root.page = "openwith"; root.expanded = true; root.holdOpen = true;\n'
+     '    }\n'
+     '    function endAppChoose(choice) {\n'
+     '        var c = root.appChoose; if (!c) return;\n'
+     '        root.appChoose = null;\n'
+     '        Quickshell.execDetached(["python3", "-I", root.portalScript, "--reply", String(c.id),\n'
+     '                                 JSON.stringify({ ok: !!choice, choice: choice || "" })]);\n'
+     '        if (root.page === "openwith") root.collapse();\n'
+     '    }\n'
+     '    Connections {\n'
+     '        target: root\n'
+     '        function onPageChanged() { if (root.appChoose && root.page !== "openwith") root.endAppChoose(""); }\n'
+     '        function onExpandedChanged() { if (!root.expanded && root.appChoose) root.endAppChoose(""); }\n'
+     '    }\n'),
+    ('                           : root.page === "agents"   ? agentsComp\n',
+     '                           : root.page === "openwith" ? openwithComp   ' + TAG + '\n'
+     '                           : root.page === "agents"   ? agentsComp\n'),
+    ('        Component { id: controlsComp; Loader {',
+     '        Component { id: openwithComp; AppChooserView { sys: root } }   ' + TAG + '\n'
+     '        Component { id: controlsComp; Loader {'),
+    ('        function settings(): void { root.settingsTab = 0; root.togglePage("settings"); }\n',
+     '        function settings(): void { root.settingsTab = 0; root.togglePage("settings"); }\n'
+     '        function chooseApp(spec: string): void {   ' + TAG + '\n'
+     '            var s; try { s = JSON.parse(spec); } catch (e) { return; }\n'
+     '            root.chooseAppStart(s);\n'
+     '        }\n'),
+]
+
+def _toggle(label, sub, key):
+    return ("        SetToggle {\n"
+            "            sys: page.sys\n"
+            "            label: \"" + label + "\"\n"
+            "            sub: \"" + sub + "\"\n"
+            "            on: page.sys.cfg." + key + "\n"
+            "            onToggled: value => { page.sys.cfg." + key + " = value; page.sys.saveCfg(); }\n"
+            "        }\n")
+
+ISLAND_SETTINGS += [
+    ("            on: page.sys.cfg.kbOnIsland\n"
+     "            onToggled: value => { page.sys.cfg.kbOnIsland = value; page.sys.saveCfg(); }\n"
+     "        }\n",
+     "            on: page.sys.cfg.kbOnIsland\n"
+     "            onToggled: value => { page.sys.cfg.kbOnIsland = value; page.sys.saveCfg(); }\n"
+     "        }\n\n"
+     "        // " + TAG + ": on the island - every item can go\n"
+     + _toggle("Clock on the island", "The time on the collapsed island.", "islClock") + "\n"
+     + _toggle("Mascot on the island", "The mascot's eyes in the middle of the island.", "mascotEnabled") + "\n"
+     + _toggle("Network on the island", "The Wi-Fi or cable icon.", "islNet") + "\n"
+     + _toggle("Volume on the island", "The speaker icon and the volume number. Changes still show for a moment.", "islVolume") + "\n"
+     + _toggle("Battery on the island", "The battery icon and its percentage.", "islBattery") + "\n"
+     + _toggle("New Home", "The redesigned Home, Wi-Fi, Bluetooth and battery pages, and a settings gear at the top right. Off: the classic panel.", "pkHome")),
+]
+
+
+# ---- Tabs everywhere (v45): every page that opens inside the island (not the detached ones:
+# settings, files, media, tasks; not the zen bar or prompts) keeps the tabs on top, plus a fourth
+# tab naming the page you're on; Home is one click away. pageMaxH: how tall a page may be.
+SHELL += [
+    ('    function chooseAppStart(spec) {\n',
+     '    readonly property bool tabsPage: ["zen", "auth", "quickfile", "vaultsave"].indexOf(page) < 0   // ' + TAG + ': tabs on top\n'
+     '    readonly property bool tabsExtra: tabsPage && ["main", "chat", "zentab"].indexOf(page) < 0\n'
+     '    readonly property int pageMaxH: cfg.expandedH - (tabsPage ? 75 : 30)\n'
+     '    function pageTitle(p) {\n'
+     '        return ({ vpn: "VPN", wifi: "Wi-Fi", bt: "Bluetooth", notif: "Notifications", audio: "Sound", power: "Power",\n'
+     '                  record: "Record", cal: "Calendar", clip: "Clipboard", vault: "Vault", agents: "Agents", launcher: "Apps",\n'
+     '                  updates: "Updates", logs: "Logs", screen: "Screen", editor: "Editor", startup: "Startup",\n'
+     '                  openwith: "Open with" })[p] || (p ? p.charAt(0).toUpperCase() + p.slice(1) : "");\n'
+     '    }\n'
+     '    function pageIcon(p) {\n'
+     '        return ({ vpn: "shield-check", wifi: "wifi-high", bt: "bluetooth", notif: "bell", audio: "speaker-high", power: "power",\n'
+     '                  record: "record", cal: "calendar-blank", clip: "clipboard-text", vault: "vault", agents: "robot",\n'
+     '                  launcher: "squares-four", updates: "package", logs: "scroll", screen: "selection", editor: "note-pencil",\n'
+     '                  startup: "rocket-launch", openwith: "app-window" })[p] || "circle";\n'
+     '    }\n'
+     '    function chooseAppStart(spec) {\n'),
+    ('(root.page === "main" || root.page === "chat" || root.page === "zentab" || root.page === "vpn")', 'root.tabsPage', "all"),
+    ('            }\n        }\n\n        Rectangle {\n            id: vpnTab\n',
+     '            }\n'
+     '            Rectangle {   // ' + TAG + ': the page you are on, as a fourth tab\n'
+     '                id: pageTab\n'
+     '                property string shown: ""\n'
+     '                Connections { target: root; function onPageChanged() { if (root.tabsExtra) pageTab.shown = root.page; } }\n'
+     '                Component.onCompleted: if (root.tabsExtra) shown = root.page\n'
+     '                width: root.tabsExtra ? pageTabRow.implicitWidth + 30 : 0\n'
+     '                visible: width > 0.5\n'
+     '                height: 34; radius: 17; clip: true\n'
+     '                color: Qt.rgba(1, 1, 1, 0.12)\n'
+     '                Behavior on width { enabled: !root.noMotion; NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }\n'
+     '                Row {\n'
+     '                    id: pageTabRow; x: 15; anchors.verticalCenter: parent.verticalCenter; spacing: 8\n'
+     '                    PkIcon { sys: root; anchors.verticalCenter: parent.verticalCenter; name: root.pageIcon(pageTab.shown); size: 17; filled: true; color: root.colFg }\n'
+     '                    Text { anchors.verticalCenter: parent.verticalCenter; text: root.pageTitle(pageTab.shown); color: root.colFg\n'
+     '                           font { family: root.fontBody; pixelSize: 12; bold: true } }\n'
+     '                }\n'
+     '            }\n'
+     '        }\n\n        Rectangle {\n            id: vpnTab\n'),
+    # the editor's "+": the island's file picker names the new file, then it opens in the editor
+    ('        if (p.kind === "chat") {\n',
+     '        if (p.kind === "editor") {   // ' + TAG + '\n'
+     '            if (ok && paths && paths.length) { Quickshell.execDetached(["touch", String(paths[0])]); root.editorOpen(String(paths[0])); }\n'
+     '            else if (!quiet) root.editorOpen("");\n'
+     '            return;\n'
+     '        }\n'
+     '        if (p.kind === "chat") {\n'),
+]
+
+# ---- Settings and notifications (v46): the settings frame is SettingsPanel.qml (kit), the Set*
+# building blocks are redrawn by ui/settings/Set*.qml (same API; originals kept as .pristine), the
+# old author's card and GitHub mentions go, notifications use PkNotifCard (list) and kit type (toast).
+SET_KIT = ["SetCard.qml", "SetLabel.qml", "SetHeader.qml", "SetToggle.qml", "SetButton.qml", "SetScroll.qml",
+           "SetSelect.qml", "SetSlider.qml", "SetPick.qml"]
+SYSTEM = [
+    ('    // ------------------------------------------------------------- автор\n    // Ссылка стоит первой и во всю ширину: это лицо страницы, а не сноска.\n    Rectangle {\n        Layout.fillWidth: true\n        implicitHeight: 64\n        radius: 18\n        color: ghMa.containsMouse\n               ? Qt.rgba(page.sys.colFg.r, page.sys.colFg.g, page.sys.colFg.b, 0.10)\n               : Qt.rgba(page.sys.colFg.r, page.sys.colFg.g, page.sys.colFg.b, 0.045)\n        Behavior on color { ColorAnimation { duration: page.sys.animFade } }\n\n        RowLayout {\n            anchors.fill: parent\n            anchors.leftMargin: 18\n            anchors.rightMargin: 18\n            spacing: 14\n\n            Text {\n                text: String.fromCodePoint(0xF02A4)   // логотип GitHub\n                color: page.sys.colFg\n                font { family: page.sys.fontFam; pixelSize: 26 }\n            }\n            ColumnLayout {\n                Layout.fillWidth: true\n                spacing: 1\n                Text {\n                    text: "github.com/EnsixD"\n                    color: page.sys.colFg\n                    font { family: page.sys.fontDisplay; pixelSize: page.sys.fontSize + 1 }\n                }\n                Text {\n                    text: page.sys.tr("Автор оболочки — профиль на GitHub")\n                    color: page.sys.colMuted\n                    font { family: page.sys.fontBody; pixelSize: page.sys.fontSize - 4 }\n                }\n            }\n            Text {\n                text: String.fromCodePoint(0xF0327)   // стрелка наружу\n                color: page.sys.colMuted\n                font { family: page.sys.fontFam; pixelSize: page.sys.fontSize }\n            }\n        }\n\n        MouseArea {\n            id: ghMa\n            anchors.fill: parent\n            hoverEnabled: true\n            cursorShape: Qt.PointingHandCursor\n            onClicked: { pOpen.url = "https://github.com/EnsixD"; pOpen.running = true; }\n        }\n    }\n\n',
+     "    // " + TAG + ": no author card - this is a different system now\n\n"),
+    ('page.sys.tr("Нет связи с GitHub")', '"Can\'t reach the update server" /* ' + TAG + ' */'),
+]
+APPEARANCE = [
+    ('page.sys.tr("Для этого языка нет перевода интерфейса Panacea. Пока используется английский; запросите перевод через issue на GitHub.")',
+     '"There\'s no interface translation for this language yet, so English is used." /* ' + TAG + ' */'),
+]
+SHELL += [
+    ('        Component { id: settingsComp; SettingsView { sys: root; tab: root.settingsTab } }\n',
+     '        Component { id: settingsComp; SettingsPanel { sys: root; tab: root.settingsTab } }   // ' + TAG + '\n'),
+    ('        Component { id: notifComp;    NotificationsView { sys: root } }\n',
+     '        Component { id: notifComp;    NotifListView { sys: root } }   // ' + TAG + '\n'),
+    # the toast: kit type and icons
+    ("""                radius: 10
+                color: claude ? "transparent"
+                     : root.notifUrgent ? Qt.rgba(1, 0.27, 0.27, 0.18)
+                                        : Qt.rgba(1, 1, 1, 0.08)
+""", """                radius: root.pk.rSmall   // """ + TAG + """: kit
+                color: claude ? "transparent" : root.pk.veil(0.08)
+"""),
+    ("""                Text {
+                    anchors.centerIn: parent
+                    visible: !toastIcon.visible && !parent.claude
+                    text: String.fromCodePoint(root.notifUrgent ? 0xF0026 : 0xF009A)
+                    color: root.notifUrgent ? root.colCrit : root.colFg
+                    font { family: root.fontFam; pixelSize: root.iconSize - 1 }
+                }
+""", """                PkIcon {
+                    sys: root
+                    anchors.centerIn: parent
+                    visible: !toastIcon.visible && !parent.claude
+                    name: root.notifUrgent ? "warning-circle" : "bell"; filled: true; size: 18
+                    color: root.notifUrgent ? root.pk.accentText : root.pk.soft
+                }
+"""),
+    ("""                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    Text {
+                        Layout.fillWidth: true
+                        text: root.notifSummary
+                        color: root.colFg
+                        elide: Text.ElideRight
+                        font { family: root.fontFam; pixelSize: root.fontSize - 1; bold: true }
+                    }
+                    Text {
+                        text: root.notifApp
+                        color: root.colMuted
+                        font { family: root.fontFam; pixelSize: root.fontSize - 5 }
+                    }
+                }
+""", """                Row {   // """ + TAG + """: "App", a red dot when urgent, then the title (PkNotifCard's order)
+                    spacing: 6
+                    Rectangle { visible: root.notifUrgent; anchors.verticalCenter: parent.verticalCenter; width: 6; height: 6; radius: 3; color: root.pk.accent }
+                    Text { text: root.notifApp || "Notification"; color: root.pk.muted
+                           font { family: root.pk.font; pixelSize: root.pk.tCaption; weight: Font.DemiBold } }
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: root.notifSummary
+                    color: root.pk.fg
+                    elide: Text.ElideRight
+                    font { family: root.pk.font; pixelSize: root.pk.tEmph; weight: Font.DemiBold }
+                }
+"""),
+    ("""                    textFormat: Text.StyledText
+                    font { family: root.fontFam; pixelSize: root.fontSize - 3 }
+""", """                    textFormat: Text.StyledText
+                    font { family: root.pk.font; pixelSize: root.pk.tLabel }   // """ + TAG + """
+"""),
+    ("""            Text {
+                visible: !root.approvalToast
+                Layout.alignment: Qt.AlignTop
+                text: "×"
+                color: closeMa.containsMouse ? root.colFg : root.colMuted
+                font { family: root.fontFam; pixelSize: root.fontSize + 2 }
+                Behavior on color { ColorAnimation { duration: 150 } }
+""", """            PkIcon {   // """ + TAG + """
+                sys: root
+                visible: !root.approvalToast
+                Layout.alignment: Qt.AlignTop
+                Layout.topMargin: 2
+                name: "x"; size: 14
+                color: closeMa.containsMouse ? root.pk.fg : root.pk.muted
+"""),
+]
+
 def plan(path, repl):
     """-> (new text, pristine text to save or None), or None if an anchor is missing."""
     cur = open(path, encoding="utf-8").read()
@@ -821,7 +1319,7 @@ def write(path, text):
 
 
 def main():
-    targets = [(os.path.join(D, "FilesView.qml"), FILES), (os.path.join(D, "SetMotion.qml"), MOTION), (os.path.join(D, "shell.qml"), SHELL)]
+    targets = [(os.path.join(D, "FilesView.qml"), FILES), (os.path.join(D, "SetMotion.qml"), MOTION), (os.path.join(D, "SetBarIsland.qml"), ISLAND_SETTINGS), (os.path.join(D, "SetSystem.qml"), SYSTEM), (os.path.join(D, "SetAppearance.qml"), APPEARANCE), (os.path.join(D, "shell.qml"), SHELL)]
     plans = []
     for path, repl in targets:
         p = plan(path, repl)
@@ -831,14 +1329,28 @@ def main():
         plans.append((path, p))
     changed = False
     here = os.path.dirname(os.path.abspath(__file__))
-    for name in ("TasksView.qml", "TasksChart.qml", "IslandGlow.qml", "ZenSearchView.qml", "ZenBar.qml", "ZenTabView.qml", "zen-logo.svg"):   # written first: shell.qml uses them
+    kit = sorted(n for n in os.listdir(os.path.join(here, "..", "ui")) if n.startswith("Pk") and n.endswith((".qml", ".js"))) if os.path.isdir(os.path.join(here, "..", "ui")) else []
+    for name in kit + ["HomeView.qml", "UpdatesView.qml", "LogsView.qml", "ScreenView.qml", "EditorView.qml", "StartupView.qml", "AppChooserView.qml", "SettingsPanel.qml", "NotifListView.qml", "TasksView.qml", "TasksChart.qml", "IslandGlow.qml", "ZenSearchView.qml", "ZenBar.qml", "ZenTabView.qml", "zen-logo.svg"]:   # written first: shell.qml uses them
         src = os.path.join(here, name)
+        if not os.path.exists(src):
+            src = os.path.join(here, "..", "ui", name)   # the design kit (PkMorph)
         if os.path.exists(src):
             body = open(src, encoding="utf-8").read()
             dst = os.path.join(D, name)
             if not os.path.exists(dst) or open(dst, encoding="utf-8").read() != body:
                 write(dst, body)
                 changed = True
+    for name in SET_KIT:   # Panacea's settings building blocks, redrawn with the kit (originals kept)
+        src = os.path.join(here, "..", "ui", "settings", name)
+        dst = os.path.join(D, name)
+        if not os.path.exists(src) or not os.path.exists(dst):
+            continue
+        body, cur = open(src, encoding="utf-8").read(), open(dst, encoding="utf-8").read()
+        if cur != body:
+            if "panacea-config settings kit" not in cur:
+                write(dst + ".pristine", cur)
+            write(dst, body)
+            changed = True
     for path, (out, pristine) in plans:   # FilesView first: shell.qml uses its new signal
         if pristine is not None:
             write(path + ".pristine", pristine)

@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""File-chooser portal backend that uses Panacea's own file manager.
+"""File-chooser and app-chooser portal backend that uses Panacea's island.
+
+The app chooser ("Open with...", AppChooser) shows the suggested apps on an island page
+(AppChooserView, `ipc call pill chooseApp`); it also falls back to GTK.
 
 Apps (browsers, Electron apps like Claude or Discord, GTK apps...) ask
 xdg-desktop-portal for an Open/Save dialog; xdg-desktop-portal hands the call
@@ -35,7 +38,16 @@ ARGS = '<arg type="o" name="handle" direction="in"/><arg type="s" name="app_id" 
        '<arg type="u" name="response" direction="out"/><arg type="a{sv}" name="results" direction="out"/>'
 XML = f'<node><interface name="{IFACE}">' + "".join(
     f'<method name="{m}">{ARGS}</method>' for m in ("OpenFile", "SaveFile", "SaveFiles")) + \
+    '<property name="version" type="u" access="read"/></interface>' + \
+    '<interface name="org.freedesktop.impl.portal.AppChooser">' \
+    '<method name="ChooseApplication"><arg type="o" name="handle" direction="in"/>' \
+    '<arg type="s" name="app_id" direction="in"/><arg type="s" name="parent_window" direction="in"/>' \
+    '<arg type="as" name="choices" direction="in"/><arg type="a{sv}" name="options" direction="in"/>' \
+    '<arg type="u" name="response" direction="out"/><arg type="a{sv}" name="results" direction="out"/></method>' \
+    '<method name="UpdateChoices"><arg type="o" name="handle" direction="in"/>' \
+    '<arg type="as" name="choices" direction="in"/></method>' \
     '<property name="version" type="u" access="read"/></interface></node>'
+CHOOSER = "org.freedesktop.impl.portal.AppChooser"
 
 pending = {}            # request id -> (invocation, method, options)
 ids = itertools.count(1)
@@ -73,7 +85,39 @@ def forward_to_gtk(inv, method, params):
              Gio.DBusCallFlags.NONE, GLib.MAXINT, None, done)
 
 
+def choose_app(params, inv):
+    """Open with...: the island lists the choices; GTK's dialog if the island can't."""
+    _handle, app_id, _parent, choices, opts = params.unpack()
+    target = opts.get("filename") or opts.get("uri") or ""
+    spec = {"id": str(next(ids)), "kind": "app", "choices": list(choices), "app": app_id,
+            "type": opts.get("content_type", ""), "target": target, "last": opts.get("last_choice", "")}
+    try:
+        r = subprocess.run(["qs", "-p", PANACEA, "ipc", "call", "pill", "chooseApp", json.dumps(spec)],
+                           capture_output=True, text=True, timeout=5)
+        ok = r.returncode == 0 and "chooseApp" not in (r.stderr + r.stdout)
+    except (OSError, subprocess.TimeoutExpired):
+        ok = False
+    if not ok:
+        log("Panacea app chooser unavailable - using the GTK dialog")
+        def done(conn, res):
+            try:
+                inv.return_value(conn.call_finish(res))
+            except GLib.Error as e:
+                log("GTK fallback failed:", e.message)
+                inv.return_value(GLib.Variant("(ua{sv})", (2, {})))
+        bus.call(GTK, PATH, CHOOSER, "ChooseApplication", params, GLib.VariantType("(ua{sv})"),
+                 Gio.DBusCallFlags.NONE, GLib.MAXINT, None, done)
+        return
+    pending[spec["id"]] = (inv, "ChooseApplication", opts)
+
+
 def on_call(conn, sender, path, iface, method, params, inv):
+    if iface == CHOOSER:
+        if method == "ChooseApplication":
+            choose_app(params, inv)
+        else:   # UpdateChoices: the list on the island stays as it was
+            inv.return_value(None)
+        return
     _handle, app_id, _parent, title, opts = params.unpack()
     folder = path_of(opts.get("current_folder"))
     name = opts.get("current_name", "")
@@ -110,6 +154,13 @@ def on_answer(msg):
     if not item:
         return False
     inv, method, opts = item
+    if method == "ChooseApplication":
+        choice = ans.get("choice")
+        if ans.get("ok") and isinstance(choice, str) and choice:
+            inv.return_value(GLib.Variant("(ua{sv})", (0, {"choice": GLib.Variant("s", choice)})))
+        else:
+            inv.return_value(GLib.Variant("(ua{sv})", (1, {})))
+        return False
     paths = [p for p in ans.get("paths", []) if isinstance(p, str) and p]
     if not ans.get("ok") or not paths:
         finish(inv, False, [])
@@ -147,8 +198,8 @@ def on_bus(conn, name):
     global bus
     bus = conn
     node = Gio.DBusNodeInfo.new_for_xml(XML)
-    conn.register_object(PATH, node.interfaces[0], on_call,
-                         lambda *a: GLib.Variant("u", 3), None)
+    for i, ver in ((node.interfaces[0], 3), (node.interfaces[1], 2)):
+        conn.register_object(PATH, i, on_call, lambda *a, v=ver: GLib.Variant("u", v), None)
 
 
 threading.Thread(target=serve_socket, daemon=True).start()

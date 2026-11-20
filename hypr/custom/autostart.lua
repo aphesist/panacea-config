@@ -49,6 +49,8 @@ if not exists(started) then
     hl.on("hyprland.start", function()
         real_exec(BIN .. "panacea-lock")
         real_exec("hypridle -c " .. HOME .. "/.config/hypr/custom/hypridle.conf")
+        -- the island's Startup screen: apps switched on in hypr/custom/startup-apps.json
+        real_exec(HOME .. "/.config/panacea/scripts/custom/startup-apps.py")
     end)
 end
 

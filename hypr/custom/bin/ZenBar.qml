@@ -45,9 +45,15 @@ Item {
         anchors.topMargin: 8
         anchors.horizontalCenter: parent.horizontalCenter
         spacing: 6
-        opacity: bar.hovered ? 1 : 0
+        // Shown only where the island already has room for it: the opacity follows the island's
+        // animated size (laid out on it, see shell.qml), so no frame shows the strip cut by a corner.
+        // `want` only says whether to show it at all; the geometry says how much.
+        property real want: bar.hovered ? 1 : 0
+        Behavior on want { NumberAnimation { duration: 120 } }
+        readonly property real room: Math.max(0, Math.min(1, (bar.height - bar.sys.pillH) / bar.stripH))
+                                   * Math.max(0, Math.min(1, (bar.width - tabs.implicitWidth - 12) / 36))
+        opacity: want * room * room
         visible: opacity > 0.01
-        Behavior on opacity { NumberAnimation { duration: 160 } }
 
         Repeater {
             // the island's own tab icons: the filled house, Claude's logo, Zen's circles
