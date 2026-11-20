@@ -12,7 +12,7 @@ back on its own). Re-run by panacea-portal-patch.path after Panacea updates.
 import os, sys
 
 D = os.path.expanduser("~/.config/panacea")
-VERSION = "v28"
+VERSION = "v30"
 TAG_PREFIX = "// panacea-local portal patch "
 TAG = TAG_PREFIX + VERSION
 
@@ -616,12 +616,23 @@ SHELL += [
      '            z: 120\n'
      '            sys: root\n'
      '            visible: opacity > 0.01\n'
-     '            opacity: root.zenBarShown ? 1 : 0\n'
-     '            // out at once (the page takes over), back only once the island has shrunk to it\n'
-     '            Behavior on opacity { SequentialAnimation {\n'
-     '                PauseAnimation { duration: root.zenBarShown ? Math.round(root.animMs * 0.55) : 0 }\n'
-     '                NumberAnimation { duration: root.zenBarShown ? root.animFast : Math.min(90, root.animFast) }\n'
-     '            } }\n'
+     '            // gone in the very frame the island opens (its tabs never meet the island\'s own),\n'
+     '            // back only once the island has shrunk to it. Driven by hand: a Behavior would read\n'
+     '            // its timings before they switch and linger.\n'
+     '            opacity: 0\n'
+     '            Component.onCompleted: opacity = root.zenBarShown ? 1 : 0\n'
+     '            Connections {\n'
+     '                target: root\n'
+     '                function onZenBarShownChanged() {\n'
+     '                    if (root.zenBarShown) zenBarIn.restart();\n'
+     '                    else { zenBarIn.stop(); zenBarItem.opacity = 0; }\n'
+     '                }\n'
+     '            }\n'
+     '            SequentialAnimation {\n'
+     '                id: zenBarIn\n'
+     '                PauseAnimation { duration: Math.round(root.animMs * 0.55) }\n'
+     '                NumberAnimation { target: zenBarItem; property: "opacity"; to: 1; duration: root.animFast; easing.type: Easing.OutCubic }\n'
+     '            }\n'
      '        }\n\n'
      '        // ' + TAG + ': a sideways touchpad swipe on the open island changes tab (one per swipe;\n'
      '        // fingers left = the next tab, like a carousel following them). Only sideways scrolls\n'
@@ -658,6 +669,27 @@ SHELL += [
      '        function zenNew(): void { root.zenNewTab = true; root.togglePage("zen"); }\n'
      '        function zenBar(): void { root.zenOpenSearch(false); }      ' + TAG + ': Zen-only mode\n'
      '        function zenBarNew(): void { root.zenOpenSearch(true); }\n'),
+    # the island's own tabs (and the VPN button) fade in a beat after it starts opening, so
+    # from the Zen bar one strip hands over to the other instead of both showing at once
+    ('            z: 65\n            spacing: 6\n',
+     '            z: 65\n            spacing: 6\n'
+     '            opacity: 0   ' + TAG + ': tabs fade in after the bar, hide at once\n'
+     '            Component.onCompleted: opacity = root.expanded ? 1 : 0\n'
+     '            Connections {\n'
+     '                target: root\n'
+     '                function onExpandedChanged() {\n'
+     '                    if (root.expanded) { islandTabs.opacity = 0; tabsIn.restart(); }\n'
+     '                    else { tabsIn.stop(); islandTabs.opacity = 0; }\n'
+     '                }\n'
+     '            }\n'
+     '            SequentialAnimation {\n'
+     '                id: tabsIn\n'
+     '                PauseAnimation { duration: root.zenSolo ? Math.round(root.animMs * 0.2) : 0 }\n'
+     '                NumberAnimation { target: islandTabs; property: "opacity"; to: 1; duration: root.animFast; easing.type: Easing.OutCubic }\n'
+     '            }\n'),
+    ('            z: 65; width: 34; height: 34; radius: 17\n',
+     '            z: 65; width: 34; height: 34; radius: 17\n'
+     '            opacity: islandTabs.opacity   ' + TAG + '\n'),
 ]
 
 FILES = [
