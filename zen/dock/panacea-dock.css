@@ -470,3 +470,7 @@
 }
 #urlbar#urlbar > .urlbar-input-container > #panacea-dock-claude:hover::before { background: rgba(255, 255, 255, 0.55); }
 #urlbar#urlbar[panacea-claude-on] > .urlbar-input-container > #panacea-dock-claude::before { background: #d97757; }
+
+/* while the island is the address bar, a loading page lights the island (panacea-dock.uc.js,
+   in the site's colours) instead of Zen's progress pill */
+:root[panacea-solo] #zen-loading-progress-bar { display: none !important; }

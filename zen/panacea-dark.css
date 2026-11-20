@@ -1,4 +1,4 @@
-/* Panacea for Zen: near-black, greys and white, one red accent (#d71921).
+/* Panacea for Zen: near-black, greys and white, one accent: Zen's own orange (#f76f53).
  * One palette, five layers, each with one job:
  *   --p0 frame    window, sidebar, toolbar (darkest, like the island)
  *   --p1 page     the page area and new-tab page: a card set into the frame
@@ -19,8 +19,8 @@
   --p-line-soft: #1a1a1a;
   --p-fg: #ececec;          /* text */
   --p-dim: #8c8c8c;         /* secondary text, placeholders */
-  --p-accent: #d71921;      /* focus, selection, the one colour */
-  --p-accent-soft: color-mix(in srgb, #d71921 22%, transparent);
+  --p-accent: #f76f53;      /* focus, selection, the one colour: Zen's orange (was Panacea's red #d71921) */
+  --p-accent-soft: color-mix(in srgb, var(--p-accent) 22%, transparent);
 
   color-scheme: dark !important;
   accent-color: var(--p-accent) !important;
@@ -148,16 +148,92 @@
   background-color: var(--p2) !important;
 }
 
-/* ---------------------------------------------------------------- menus and panels */
+/* ---------------------------------------------------------------- menus and panels
+ * Like the island: the frame's black (--p0), no strokes or shadows, round corners
+ * (16px, the windows' rounding; rows 10px), the hover/selected row in the field grey
+ * (--p2, the island's selected row). Separators are a thin --p2 line with air around it.
+ * Covers right-click menus, submenus, the url bar and tab menus, and arrow panels
+ * (extensions, site info, the app menu, downloads...). */
+:root {
+  --arrowpanel-background: var(--p0) !important;
+  --arrowpanel-border-color: transparent !important;
+  --arrowpanel-border-radius: 16px !important;
+  --arrowpanel-menuitem-border-radius: 10px !important;
+  --panel-background: var(--p0) !important;
+  --panel-border-color: transparent !important;
+  --panel-separator-color: var(--p2) !important;
+  --panel-item-hover-bgcolor: var(--p2) !important;
+  --panel-item-active-bgcolor: var(--p4) !important;
+  --menu-background-color: var(--p0) !important;
+  --menu-border-color: transparent !important;
+  --menuitem-hover-background-color: var(--p2) !important;
+  --button-hover-bgcolor: var(--p2) !important;
+}
 menupopup, panel {
-  --panel-background: var(--p3) !important;
-  --panel-border-color: var(--p-line) !important;
+  --panel-background: var(--p0) !important;
+  --panel-background-color: var(--p0) !important;
+  --panel-border-color: transparent !important;
   --panel-color: var(--p-fg) !important;
+  --panel-border-radius: 16px !important;
+  --panel-padding: 6px !important;
+  --panel-shadow: none !important;
+  box-shadow: none !important;
 }
-menupopup > menuitem[_moz-menuactive], menupopup > menu[_moz-menuactive] {
-  background-color: var(--p4) !important;
+menupopup::part(content), panel::part(content) {
+  background-color: var(--p0) !important;
+  border: 0 !important;
+  border-radius: 16px !important;
+  box-shadow: none !important;
+  outline: 0 !important;
 }
-menuseparator, toolbarseparator { border-color: var(--p-line) !important; }
+menupopup::part(content) { padding: 6px !important; }
+
+/* rows */
+menupopup > menuitem, menupopup > menu,
+menupopup > menugroup > menuitem {
+  border-radius: 10px !important;
+  margin-inline: 0 !important;
+  padding-block: 7px !important;
+}
+menupopup > menuitem[_moz-menuactive], menupopup > menu[_moz-menuactive],
+menupopup > menu[open], menupopup > menugroup > menuitem[_moz-menuactive] {
+  background-color: var(--p2) !important;
+  color: var(--p-fg) !important;
+}
+menupopup > menuitem[disabled][_moz-menuactive], menupopup > menu[disabled][_moz-menuactive] {
+  background-color: transparent !important;
+}
+.subviewbutton, .toolbaritem-combined-buttons > .subviewbutton,
+#unified-extensions-panel .unified-extensions-item, .unified-extensions-item-action-button {
+  border-radius: 10px !important;
+}
+.subviewbutton:not([disabled]):hover, .subviewbutton[open],
+#unified-extensions-panel .unified-extensions-item:hover,
+.unified-extensions-item-action-button:hover, .unified-extensions-item-menu-button:hover {
+  background-color: var(--p2) !important;
+}
+.subviewbutton:not([disabled]):hover:active { background-color: var(--p4) !important; }
+
+/* the back / forward / reload / bookmark row of the page menu: round buttons */
+#context-navigation > .menuitem-iconic {
+  border-radius: 10px !important;
+}
+#context-navigation > .menuitem-iconic[_moz-menuactive] { background-color: var(--p2) !important; }
+
+/* separators: no strokes in the frame, just a quiet line with air */
+menuseparator, toolbarseparator, toolbarseparator:not([orient="vertical"]) {
+  appearance: none !important;
+  border: 0 !important;
+  border-top: 1px solid var(--p2) !important;
+  margin: 5px 10px !important;
+  padding: 0 !important;
+}
+menuseparator::before, menuseparator::after { display: none !important; }
+
+/* panel headers and footers drop their divider lines too */
+.panel-header + toolbarseparator, .panel-footer, .panel-subview-footer, .panel-subview-footer-button {
+  border-top-color: transparent !important;
+}
 
 /* ---------------------------------------------------------------- url bar: stays put when opened
  * Firefox's "popover" url bar jumps to the top of the toolbar row, widens and grows
@@ -175,4 +251,79 @@ menuseparator, toolbarseparator { border-color: var(--p-line) !important; }
     padding-block: 0 !important;
     padding-inline: var(--urlbar-input-container-padding) !important;
   }
+}
+
+/* ---------------------------------------------------------------- sidebar footer
+ * extensions and settings (JS/panacea-sidebar.uc.js) in place of Zen's "+" (create new:
+ * a new tab, folder or Space; Ctrl+T and the Spaces menu still do those) */
+#zen-create-new-button { display: none !important; }
+.panacea-foot-btn { fill: currentColor !important; -moz-context-properties: fill, fill-opacity !important; }
+/* order: the Spaces, a gap, then the tools - library, extensions, settings */
+#zen-sidebar-foot-buttons > #zen-workspaces-button { order: 0 !important; }
+#zen-sidebar-foot-buttons > #zen-library-button { order: 1 !important; }
+#zen-sidebar-foot-buttons > #panacea-foot-extensions { order: 2 !important; }
+#zen-sidebar-foot-buttons > #panacea-foot-settings { order: 3 !important; }
+:root:not([zen-sidebar-expanded="true"]) #zen-sidebar-foot-buttons > #zen-library-button { margin-top: 18px !important; }
+:root[zen-sidebar-expanded="true"] #zen-sidebar-foot-buttons > #zen-library-button { margin-inline-start: 18px !important; }
+
+/* hover: each tool moves a little and glows faintly, like the library's own sprite does -
+   the gear turns, the puzzle piece wiggles into place */
+.panacea-foot-btn > .toolbarbutton-icon,
+#zen-library-button .zen-library-sprite {
+  transition: filter 0.3s ease, rotate 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+:is(.panacea-foot-btn, #zen-library-button):hover :is(.toolbarbutton-icon, .zen-library-sprite) {
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.45)) !important;
+}
+@media (prefers-reduced-motion: no-preference) {
+  #panacea-foot-settings:hover > .toolbarbutton-icon { rotate: 90deg; }
+  #panacea-foot-extensions:hover > .toolbarbutton-icon { animation: panacea-wiggle 0.5s ease-out; }
+}
+@keyframes panacea-wiggle {
+  0%   { rotate: 0deg;   scale: 1; }
+  30%  { rotate: -14deg; scale: 1.08; }
+  60%  { rotate: 8deg;   scale: 1.04; }
+  100% { rotate: 0deg;   scale: 1; }
+}
+
+/* ---------------------------------------------------------------- the library (downloads,
+ * history, spaces...): the frame's black on both columns, so it reads as part of the frame;
+ * no white gradient or shadow on its tab column; the tab icons white. Zen's own hover and
+ * selected shading (a few % of the text colour) stays. */
+zen-library, zen-library #zen-library-panel, zen-library #zen-library-content {
+  background: var(--p0) !important;
+}
+zen-library #zen-library-side,
+:root[zen-right-side="true"] zen-library #zen-library-side {
+  background: var(--p0) !important;
+  box-shadow: none !important;
+}
+.zen-library-tab .zen-library-tab-icon-image,
+.empty-state-icon-image {
+  --stroke: var(--p-fg) !important;
+  --fill: color-mix(in srgb, var(--p-fg), black 60%) !important;
+}
+
+/* Zen's logo, orange, at the top of the sidebar (JS/panacea-sidebar.uc.js puts the element
+   right before the pinned tiles, #zen-essentials) */
+#panacea-zen-logo {
+  display: block;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  /* top edge level with the page card's top (the box it sits in starts ~38 px down) */
+  margin: -26px auto 14px;
+  -moz-window-dragging: drag;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg width='600' height='600' viewBox='212 212 600 600' fill='none' xmlns='http://www.w3.org/2000/svg'%3E %3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M512 627.385C575.725 627.385 627.385 575.725 627.385 512C627.385 448.275 575.725 396.615 512 396.615C448.275 396.615 396.615 448.275 396.615 512C396.615 575.725 448.275 627.385 512 627.385ZM604.308 512C604.308 562.98 562.98 604.308 512 604.308C461.02 604.308 419.692 562.98 419.692 512C419.692 461.02 461.02 419.692 512 419.692C562.98 419.692 604.308 461.02 604.308 512Z' fill='%23F76F53'/%3E %3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M712 512C712 622.457 622.457 712 512 712C401.543 712 312 622.457 312 512C312 401.543 401.543 312 512 312C622.457 312 712 401.543 712 512ZM512 673.538C601.215 673.538 673.538 601.215 673.538 512C673.538 422.785 601.215 350.462 512 350.462C422.785 350.462 350.462 422.785 350.462 512C350.462 601.215 422.785 673.538 512 673.538Z' fill='%23F76F53'/%3E %3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M812 512C812 677.685 677.685 812 512 812C346.315 812 212 677.685 212 512C212 346.315 346.315 212 512 212C677.685 212 812 346.315 812 512ZM512 758.154C647.947 758.154 758.154 647.947 758.154 512C758.154 376.053 647.947 265.846 512 265.846C376.053 265.846 265.846 376.053 265.846 512C265.846 647.947 376.053 758.154 512 758.154Z' fill='%23F76F53'/%3E %3C/svg%3E") center / contain no-repeat;
+}
+
+
+/* the active Space: an icon-less Space's dot (your home) turns Zen's orange, with a faint
+   halo; the others stay the quiet grey dot */
+#zen-workspaces-button toolbarbutton[active="true"] .zen-workspace-icon[no-icon="true"] {
+  background: var(--p-accent) !important;   /* Zen's orange */
+  box-shadow: 0 0 6px color-mix(in srgb, var(--p-accent) 55%, transparent) !important;
+  transition: background-color 0.25s ease, box-shadow 0.25s ease;
 }

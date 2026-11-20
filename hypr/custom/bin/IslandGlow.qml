@@ -43,14 +43,23 @@ Item {
     x: cx - pad; y: cy - pad
     width: cw + 2 * pad; height: ch + 2 * pad
 
-    readonly property color c0: colors.length ? colors[0] : "white"
-    readonly property color c1: colors.length > 1 ? colors[1] : c0
-    readonly property color c2: colors.length > 2 ? colors[2] : c1
+    // the colours ease into new ones while lit (a page that turns out to be another site,
+    // Claude taking over from an agent...); while hidden they just jump
+    readonly property color t0: colors.length ? colors[0] : "white"
+    readonly property color t1: colors.length > 1 ? colors[1] : t0
+    readonly property color t2: colors.length > 2 ? colors[2] : t1
+    property color c0: t0
+    property color c1: t1
+    property color c2: t2
+    Behavior on c0 { enabled: glow.visible; ColorAnimation { duration: 520; easing.type: Easing.InOutCubic } }
+    Behavior on c1 { enabled: glow.visible; ColorAnimation { duration: 520; easing.type: Easing.InOutCubic } }
+    Behavior on c2 { enabled: glow.visible; ColorAnimation { duration: 520; easing.type: Easing.InOutCubic } }
     function a(c, alpha) { return Qt.rgba(c.r, c.g, c.b, Math.max(0, Math.min(1, alpha))); }
 
     opacity: active ? 1 : 0
     visible: opacity > 0.01
-    Behavior on opacity { NumberAnimation { duration: 450; easing.type: Easing.OutCubic } }
+    // in briskly, out slowly (it settles rather than blinks off)
+    Behavior on opacity { NumberAnimation { duration: glow.active ? 320 : 700; easing.type: glow.active ? Easing.OutCubic : Easing.InOutSine } }
 
     // ---- the outline (item coordinates)
     readonly property real ex0: pad

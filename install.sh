@@ -80,6 +80,9 @@ if [ -n "$ZP" ] && [ -d "$ZEN/$ZP" ]; then
     cp -r "$HERE/zen/loader/utils" "$ZEN/$ZP/chrome/"
     install -m 644 "$HERE/zen/dock/panacea-dock.uc.js" "$ZEN/$ZP/chrome/JS/panacea-dock.uc.js"
     install -m 644 "$HERE/zen/dock/panacea-dock.css" "$ZEN/$ZP/chrome/panacea-dock.css"
+    install -m 644 "$HERE/zen/sidebar/panacea-sidebar.uc.js" "$ZEN/$ZP/chrome/JS/panacea-sidebar.uc.js"   # extensions + settings in the sidebar footer
+    install -m 644 "$HERE/zen/home/panacea-home.uc.js" "$ZEN/$ZP/chrome/JS/panacea-home.uc.js"   # the start / new-tab page (resource://panacea-home/)
+    install -Dm 644 "$HERE/zen/home/index.html" "$ZEN/$ZP/chrome/home/index.html"
     rm -rf "$ZEN/$ZP/chrome/JS/panacea-scroll.uc.js" "$ZEN/$ZP/chrome/JS/PanaceaScroll"   # retired scroll nubs
     echo "  done - restart Zen to see it (dock off: about:config, panacea.zen.dock = false)"
 else

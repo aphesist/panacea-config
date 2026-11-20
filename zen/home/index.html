@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<!-- Panacea home: Zen's start and new-tab page, served from inside Zen
+     (resource://panacea-home/, registered by JS/panacea-home.uc.js). A field of
+     dither dots drifting over a slow flow; the pointer lights and parts them, a
+     click sends a ripple in Zen's orange. Plain code, no network. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:">
+<title>New Tab</title>
+<!-- the favicon: a 4x4 dither grid, dots growing toward the middle four in Zen's orange -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1.75' y='1.75' width='1.5' height='1.5' rx='0.5' fill='%235a5a5a'/%3E%3Crect x='5.07' y='1.40' width='2.2' height='2.2' rx='0.5' fill='%239a9a9a'/%3E%3Crect x='8.73' y='1.40' width='2.2' height='2.2' rx='0.5' fill='%239a9a9a'/%3E%3Crect x='12.75' y='1.75' width='1.5' height='1.5' rx='0.5' fill='%235a5a5a'/%3E%3Crect x='1.40' y='5.07' width='2.2' height='2.2' rx='0.5' fill='%239a9a9a'/%3E%3Crect x='4.57' y='4.57' width='3.2' height='3.2' rx='0.5' fill='%23f76f53'/%3E%3Crect x='8.23' y='4.57' width='3.2' height='3.2' rx='0.5' fill='%23f76f53'/%3E%3Crect x='12.40' y='5.07' width='2.2' height='2.2' rx='0.5' fill='%239a9a9a'/%3E%3Crect x='1.40' y='8.73' width='2.2' height='2.2' rx='0.5' fill='%239a9a9a'/%3E%3Crect x='4.57' y='8.23' width='3.2' height='3.2' rx='0.5' fill='%23f76f53'/%3E%3Crect x='8.23' y='8.23' width='3.2' height='3.2' rx='0.5' fill='%23f76f53'/%3E%3Crect x='12.40' y='8.73' width='2.2' height='2.2' rx='0.5' fill='%239a9a9a'/%3E%3Crect x='1.75' y='12.75' width='1.5' height='1.5' rx='0.5' fill='%235a5a5a'/%3E%3Crect x='5.07' y='12.40' width='2.2' height='2.2' rx='0.5' fill='%239a9a9a'/%3E%3Crect x='8.73' y='12.40' width='2.2' height='2.2' rx='0.5' fill='%239a9a9a'/%3E%3Crect x='12.75' y='12.75' width='1.5' height='1.5' rx='0.5' fill='%235a5a5a'/%3E%3C/svg%3E">
+<style>
+  html, body { margin: 0; height: 100%; background: #0e0e0e; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+"use strict";
+const cv = document.getElementById("c");
+const g = cv.getContext("2d", { alpha: false });
+const BG = "#0e0e0e";
+const ACCENT = [247, 111, 83];                    // Zen's orange
+const STEP = 12;                                  // css px between dots
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
+const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let W = 0, H = 0, dpr = 1, cols = 0, rows = 0;
+function size() {
+  dpr = window.devicePixelRatio || 1;
+  W = innerWidth; H = innerHeight;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cols = Math.ceil(W / STEP) + 1; rows = Math.ceil(H / STEP) + 1;
+}
+addEventListener("resize", size);
+size();
+
+// the pointer, eased so the light glides; it fades away when the pointer leaves
+const P = { x: W / 2, y: H / 2, tx: W / 2, ty: H / 2, on: 0, ton: 0 };
+addEventListener("pointermove", (e) => { P.tx = e.clientX; P.ty = e.clientY; P.ton = 1; });
+document.addEventListener("pointerleave", () => { P.ton = 0; });
+addEventListener("blur", () => { P.ton = 0; });
+
+// ripples: a ring that grows from a click, tinted orange, fading as it goes
+const ripples = [];
+addEventListener("pointerdown", (e) => {
+  ripples.push({ x: e.clientX, y: e.clientY, t: performance.now() });
+  if (ripples.length > 6) ripples.shift();
+});
+
+// a slow flow field: layered sines that fold into each other (cheap, smooth, never repeats soon)
+function field(x, y, t) {
+  const a = Math.sin(x * 0.0042 + t * 0.21 + Math.sin(y * 0.0051 - t * 0.13) * 1.9);
+  const b = Math.cos(y * 0.0037 - t * 0.17 + Math.sin(x * 0.0029 + t * 0.11) * 2.3);
+  const c = Math.sin((x + y) * 0.0021 + t * 0.07);
+  return 0.5 + 0.5 * (0.5 * a * b + 0.35 * c);    // ~0..1
+}
+
+let last = 0, running = true;
+function frame(now) {
+  if (!running) return;
+  const t = still ? 0 : now / 1000;
+  const k = Math.min(1, (now - last) / 16.7 || 1) * 0.12;
+  last = now;
+  P.x += (P.tx - P.x) * k * 1.6; P.y += (P.ty - P.y) * k * 1.6;
+  P.on += (P.ton - P.on) * k;
+
+  g.fillStyle = BG;
+  g.fillRect(0, 0, W, H);
+
+  const R = 170, R2 = 2 * R * R;
+  const live = ripples.filter((r) => now - r.t < 2200);
+  ripples.length = 0; ripples.push(...live);
+  const cx = W / 2, cy = H / 2, vmax = Math.hypot(cx, cy);
+
+  for (let j = 0; j < rows; j++) {
+    for (let i = 0; i < cols; i++) {
+      let x = i * STEP, y = j * STEP;
+      let v = field(x, y, t);
+      // a soft vignette keeps the edges quiet
+      v *= 1 - 0.55 * Math.pow(Math.hypot(x - cx, y - cy) / vmax, 1.6);
+
+      // the pointer: light, and a gentle push outward
+      let warm = 0;
+      if (P.on > 0.01) {
+        const dx = x - P.x, dy = y - P.y, d2 = dx * dx + dy * dy;
+        const m = Math.exp(-d2 / R2) * P.on;
+        if (m > 0.004) {
+          v += m * 0.55;
+          const d = Math.sqrt(d2) || 1, push = m * 9;
+          x += (dx / d) * push; y += (dy / d) * push;
+          warm = Math.max(warm, m * 0.35);
+        }
+      }
+      // ripples: a bright orange band riding outward
+      for (const r of live) {
+        const age = (now - r.t) / 1000, rad = age * 520, fade = 1 - age / 2.2;
+        const d = Math.hypot(x - r.x, y - r.y), band = Math.exp(-((d - rad) ** 2) / 900) * fade;
+        if (band > 0.01) {
+          v += band * 0.7; warm = Math.max(warm, band);
+          const push = band * 6, dd = d || 1;
+          x += ((x - r.x) / dd) * push; y += ((y - r.y) / dd) * push;
+        }
+      }
+
+      // ordered dithering: the 4x4 Bayer threshold decides which dots show, and how big
+      const th = BAYER[(j & 3) * 4 + (i & 3)];
+      const lvl = v * 1.15 - th;
+      if (lvl <= 0) continue;
+      const s = lvl > 0.45 ? 2.6 : lvl > 0.2 ? 2 : 1.4;
+      const grey = Math.min(255, 70 + v * 150);
+      const w = Math.min(1, warm);
+      const r = Math.round(grey + (ACCENT[0] - grey) * w);
+      const gg = Math.round(grey + (ACCENT[1] - grey) * w);
+      const b = Math.round(grey + (ACCENT[2] - grey) * w);
+      g.fillStyle = `rgb(${r},${gg},${b})`;
+      g.fillRect(x - s / 2, y - s / 2, s, s);
+    }
+  }
+  requestAnimationFrame(frame);
+}
+document.addEventListener("visibilitychange", () => {
+  running = !document.hidden;
+  if (running) requestAnimationFrame(frame);
+});
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

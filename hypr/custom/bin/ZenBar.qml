@@ -14,7 +14,7 @@ Item {
 
     readonly property var tab: sys.zenTab || ({})
     readonly property bool web: /^https?:/.test(tab.url || "")
-    readonly property string shown: web ? (tab.host || tab.url) : ""
+    readonly property string shown: web ? String(tab.host || tab.url).replace(/^www\d*\./, "") : ""   // without www. (as on the dock)
     readonly property bool hovered: hover.hovered
 
     readonly property int stripH: 34
@@ -24,6 +24,13 @@ Item {
     implicitHeight: hovered ? sys.pillH + stripH : sys.pillH
 
     HoverHandler { id: hover }
+    // clicks between the tabs and the address stop here: below them, the island's own handler
+    // would take them (it opened the media page)
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.AllButtons
+        onClicked: mouse => mouse.accepted = true
+    }
 
     TextMetrics {
         id: metrics

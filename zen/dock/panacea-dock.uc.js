@@ -70,7 +70,7 @@
   function hostText() {
     try {
       const u = gBrowser.currentURI;
-      if (u.schemeIs("http") || u.schemeIs("https")) return u.host;
+      if (u.schemeIs("http") || u.schemeIs("https")) return u.host.replace(/^www\d*\./, "");   // shown without www. (as on the island)
       return "";                      // new tab, about: pages, files: the normal text
     } catch (e) { return ""; }
   }
@@ -83,7 +83,9 @@
     // WhatsApp's unread count)
     let img = "";
     if (host) {
-      if (icons[host]) img = PathUtils.toFileURI(icons[host]);
+      let full = host;
+      try { full = gBrowser.currentURI.host; } catch (e) {}       // icons are keyed by the full host
+      if (icons[full]) img = PathUtils.toFileURI(icons[full]);
       else saveIcon(gBrowser.currentURI.spec).then((f) => { if (f) later(); });
     }
     if (label) {
@@ -237,6 +239,7 @@
     if (on === solo) return;
     solo = on;
     document.documentElement.toggleAttribute("panacea-solo", on);
+    try { glowLater(0); } catch (e) {}
     if (on && window.gURLBar?.focused) { gURLBar.view?.close(); gBrowser.selectedBrowser.focus(); }
   }
   setInterval(readSolo, 250);
@@ -447,7 +450,125 @@
   }
   setInterval(readCmd, 200);
 
+  // ------------------------------------------------------------ loading = the island's glow
+  // While the island is the address bar, a loading page lights the island's outline in the
+  // site's own colours (from its icon: YouTube red, WhatsApp green, Google's four...) instead
+  // of Zen's progress pill (hidden in panacea-dock.css while [panacea-solo]).
+  const GLOW_ID = "zen-load";
+  const glowColors = {};                    // host -> "#rrggbb ..." (only real results are kept)
+  // the site's icon as an image source: the saved file, Places (the page, then the site's root),
+  // or the tab's live icon when the tab is already on that site
+  async function iconSource(host) {
+    if (icons[host]) return PathUtils.toFileURI(icons[host]);
+    let cur = "";
+    try { cur = gBrowser.currentURI.host === host ? gBrowser.currentURI.spec : ""; } catch (e) {}
+    for (const spec of [cur, `https://${host}/`]) {
+      if (!spec) continue;
+      try {
+        const fav = await PlacesUtils.favicons.getFaviconForPage(Services.io.newURI(spec));
+        if (fav?.rawData?.length) return URL.createObjectURL(new Blob([new Uint8Array(fav.rawData)], { type: fav.mimeType || "image/png" }));
+      } catch (e) {}
+    }
+    const live = cur ? gBrowser.selectedTab?.getAttribute("image") : "";
+    return live || "";
+  }
+  async function iconColors(host) {
+    if (!host) return null;
+    if (glowColors[host]) return glowColors[host];
+    const src = await iconSource(host);
+    if (!src) return null;
+    let out = "#ffffff";
+    try {
+      const img = new Image();
+      img.src = src;
+      await img.decode();
+      const N = 32, c = document.createElementNS("http://www.w3.org/1999/xhtml", "canvas");
+      c.width = c.height = N;
+      const g = c.getContext("2d", { willReadFrequently: true });
+      g.drawImage(img, 0, 0, N, N);
+      const d = g.getImageData(0, 0, N, N).data;
+      // vivid pixels, bucketed by hue (24 buckets); the biggest peaks, averaged
+      const B = Array.from({ length: 24 }, () => ({ n: 0, r: 0, g: 0, b: 0 }));
+      let vivid = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] < 128) continue;
+        const r = d[i], gr = d[i + 1], b = d[i + 2], mx = Math.max(r, gr, b), mn = Math.min(r, gr, b);
+        if (mx < 60 || (mx - mn) / mx < 0.3) continue;
+        let h;
+        if (mx === r) h = ((gr - b) / (mx - mn) + 6) % 6;
+        else if (mx === gr) h = (b - r) / (mx - mn) + 2;
+        else h = (r - gr) / (mx - mn) + 4;
+        const k = Math.floor(h * 4) % 24;
+        B[k].n++; B[k].r += r; B[k].g += gr; B[k].b += b; vivid++;
+      }
+      const peaks = B.map((x, k) => ({ ...x, k }))
+        .filter((x, k) => x.n && x.n >= B[(k + 23) % 24].n && x.n > B[(k + 1) % 24].n)
+        .map((x) => { const L = B[(x.k + 23) % 24], R = B[(x.k + 1) % 24];
+                      return { n: x.n + L.n + R.n, r: x.r + L.r + R.r, g: x.g + L.g + R.g, b: x.b + L.b + R.b }; })
+        .filter((x) => vivid && x.n / vivid >= 0.06)
+        .sort((a, b) => b.n - a.n).slice(0, 3);
+      const hex = (v) => Math.round(v).toString(16).padStart(2, "0");
+      if (peaks.length) out = peaks.map((x) => "#" + hex(x.r / x.n) + hex(x.g / x.n) + hex(x.b / x.n)).join(" ");
+    } catch (e) { return null; }
+    finally { if (src.startsWith("blob:")) URL.revokeObjectURL(src); }
+    glowColors[host] = out;
+    return out;
+  }
+  // the host being loaded: from the request as soon as it starts (the address only changes
+  // once the page answers, so DuckDuckGo -> Gemini would glow DuckDuckGo's colours otherwise)
+  let loadHost = "";
+  const hostNow = () => { try { return gBrowser.currentURI.host; } catch (e) { return ""; } };
+  // a load must last 150 ms to light the island (instant ones don't flash), and once lit it
+  // stays at least 700 ms (one calm stroke); colour changes go to the running glow
+  let glowing = false, sentColors = "", shownAt = 0, glowTimer = null, stopTimer = null;
+  function wantGlow() {
+    return Services.wm.getMostRecentWindow("navigator:browser") === window
+      && isSolo() && !!gBrowser.selectedTab?.hasAttribute("busy");
+  }
+  async function updateGlow() {
+    clearTimeout(stopTimer);
+    if (!wantGlow()) {
+      if (!glowing) return;
+      const left = Math.max(0, 700 - (Date.now() - shownAt));
+      stopTimer = setTimeout(() => {
+        if (wantGlow() || !glowing) return;
+        glowing = false; sentColors = "";
+        island("glowStop", GLOW_ID);
+      }, left);
+      return;
+    }
+    const host = loadHost || hostNow();
+    const colors = (await iconColors(host)) || sentColors || "#ffffff";
+    if (!wantGlow()) return updateGlow();                     // finished meanwhile
+    if (glowing && colors === sentColors) return;
+    if (!glowing) shownAt = Date.now();
+    glowing = true; sentColors = colors;
+    island("glow", GLOW_ID, colors);
+  }
+  const glowLater = (ms = 150) => { clearTimeout(glowTimer); glowTimer = setTimeout(updateGlow, ms); };
+  window.addEventListener("unload", () => { if (glowing) island("glowStop", GLOW_ID); }, { once: true });
+
   function hookSolo() {
+    gBrowser.tabContainer.addEventListener("TabSelect", () => { loadHost = ""; glowLater(); });
+    gBrowser.tabContainer.addEventListener("TabAttrModified", (e) => {
+      if (e.target !== gBrowser.selectedTab) return;
+      const ch = e.detail?.changed || [];
+      if (ch.includes("image")) { const h = hostNow(); if (glowColors[h] === "#ffffff") delete glowColors[h]; }
+      if (ch.some((a) => a === "busy" || a === "progress" || a === "image")) glowLater(ch.includes("busy") ? 150 : 0);
+    });
+    gBrowser.addProgressListener({
+      onStateChange(webProgress, request, flags) {
+        if (!webProgress?.isTopLevel) return;
+        const W = Ci.nsIWebProgressListener;
+        if ((flags & W.STATE_START) && (flags & W.STATE_IS_NETWORK)) {
+          try { loadHost = request.QueryInterface(Ci.nsIChannel).URI.host; } catch (e) {}
+          glowLater();
+        } else if ((flags & W.STATE_STOP) && (flags & W.STATE_IS_NETWORK)) glowLater(0);
+      },
+      onLocationChange() { loadHost = hostNow(); glowLater(0); },
+      QueryInterface: ChromeUtils.generateQI(["nsIWebProgressListener", "nsISupportsWeakReference"]),
+    });
+    window.addEventListener("activate", () => glowLater(0));
     // new tabs (Ctrl+T, the sidebar's + and the rest) all ask Zen's handleNewTab first
     const ui = window.gZenUIManager;
     if (ui?.handleNewTab && !ui.__panaceaSolo) {
