@@ -479,9 +479,9 @@
  * The floating sidebar as the island turned on its side: it grows out of Zen's left frame wall
  * (the --zen-element-separation strip beside the page) in the frame's black (--p0), its left side
  * one with the wall, concave curves above and below joining it to the wall the way the island's
- * corners join the top edge, its right side round. No slide: it morphs out of the wall on a
- * spring (a clip-path from a point at the wall to the whole shape, curves included), contents
- * fading in after. Height follows the tabs (--panacea-sidebar-h, JS/panacea-sidebar.uc.js) up to
+ * corners join the top edge, its right side round. No slide: the black shape itself morphs out
+ * of the wall on a spring (width from the wall, height from the middle), corners and curves
+ * riding its edges, the contents fading in as it lands. Height follows the tabs (--panacea-sidebar-h, JS/panacea-sidebar.uc.js) up to
  * 90% of the window, then the tabs scroll.
  * #navigator-toolbox stays full height (Zen only reveals the sidebar while the pointer is within
  * its height) but lets the pointer through: only a strip at the edge and the dock catch it. */
@@ -518,7 +518,9 @@
     }
   }
 
-  /* the dock */
+  /* the dock. #titlebar holds the contents; .zen-toolbar-background is the black shape, and it is
+     the shape that morphs: hidden, a zero-width sliver at the wall, 44 px tall at mid-height;
+     shown, the whole height and width, round corners and curves moving with its edges. */
   & #navigator-toolbox:not([animate="true"]) #titlebar {
     flex: none !important;
     height: var(--panacea-sidebar-h, min(calc(100% - 120px), 780px)) !important;
@@ -526,59 +528,84 @@
     margin-block: auto !important;
     padding-inline: var(--pc-wall) 0 !important;    /* the contents sit beside the wall */
     overflow: visible !important;
-    /* hidden: a point at the wall, mid-height */
-    clip-path: inset(calc(50% - 24px) 100% calc(50% - 24px) 0);
+    clip-path: none !important;
     pointer-events: none;
-    transition: clip-path 0.24s var(--pc-out), height var(--pc-t) var(--pc-spring),
-                visibility 0s linear 0.24s !important;
+    transition: height var(--pc-t) var(--pc-spring), visibility 0s linear 0.3s !important;
     & > :not(.zen-toolbar-background) {
       opacity: 0;
-      transition: opacity 0.12s ease !important;
+      translate: -6px 0;
+      transition: opacity 0.1s ease, translate 0.2s var(--pc-out) !important;
     }
   }
   & #navigator-toolbox:is([zen-has-hover], [zen-user-show], [zen-has-empty-tab], [flash-popup],
                           [has-popup-menu], [movingtab], [zen-compact-mode-active]):not([animate="true"]) #titlebar,
   &[zen-renaming-tab="true"] #navigator-toolbox:not([animate="true"]) #titlebar {
-    /* shown: the whole shape, the curves above and below included */
-    clip-path: inset(calc(-1 * var(--pc-f)) 0 calc(-1 * var(--pc-f)) 0);
     pointer-events: auto;
     visibility: visible !important;
-    transition: clip-path var(--pc-t) var(--pc-spring), height var(--pc-t) var(--pc-spring),
-                visibility 0s !important;
+    transition: height var(--pc-t) var(--pc-spring), visibility 0s !important;
     & > :not(.zen-toolbar-background) {
       opacity: 1;
-      transition: opacity 0.3s ease 0.12s !important;
+      translate: 0 0;
+      transition: opacity 0.28s ease 0.1s, translate 0.55s var(--pc-spring) 0.06s !important;
     }
   }
   & #navigator-toolbox:not([animate="true"]) #titlebar .zen-toolbar-background {
+    position: absolute !important;
+    display: block !important;
+    inset: auto !important;
+    left: 0 !important;
+    top: calc(50% - 22px) !important;
+    bottom: calc(50% - 22px) !important;
+    width: var(--pc-wall) !important;
     background: var(--p0) !important;
     backdrop-filter: none !important;
     border-radius: 0 var(--pc-r) var(--pc-r) 0 !important;
     box-shadow: none !important;
     overflow: visible !important;
+    transition: top 0.3s var(--pc-out), bottom 0.3s var(--pc-out), width 0.26s var(--pc-out) !important;
     /* the curves: a quarter of the frame colour above and below, hollowed by a circle, so the
-       dock's straight top and bottom bend up and down into the wall */
+       dock's top and bottom bend into the wall (Zen fades ::before for its Space gradients:
+       opacity is set here on both) */
     &::before, &::after {
       display: block !important;
       content: "" !important;
       position: absolute !important;
       left: var(--pc-wall) !important;
+      right: auto !important;
       width: var(--pc-f) !important;
       height: var(--pc-f) !important;
       outline: 0 !important;
       border-radius: 0 !important;
-      inset-inline-end: auto !important;
       corner-shape: round !important;
+      opacity: 0 !important;
+      scale: 1 0.2;
+      transition: opacity 0.12s ease, scale 0.2s var(--pc-out) !important;
     }
     &::before {
       top: calc(-1 * var(--pc-f)) !important;
       bottom: auto !important;
+      transform-origin: bottom;
       background: radial-gradient(circle at 100% 0, transparent calc(var(--pc-f) - 0.5px), var(--p0) var(--pc-f)) !important;
     }
     &::after {
       top: 100% !important;
       bottom: auto !important;
+      transform-origin: top;
       background: radial-gradient(circle at 100% 100%, transparent calc(var(--pc-f) - 0.5px), var(--p0) var(--pc-f)) !important;
+    }
+  }
+  & #navigator-toolbox:is([zen-has-hover], [zen-user-show], [zen-has-empty-tab], [flash-popup],
+                          [has-popup-menu], [movingtab], [zen-compact-mode-active]):not([animate="true"]) #titlebar .zen-toolbar-background,
+  &[zen-renaming-tab="true"] #navigator-toolbox:not([animate="true"]) #titlebar .zen-toolbar-background {
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    transition: top var(--pc-t) var(--pc-spring), bottom var(--pc-t) var(--pc-spring),
+                width calc(var(--pc-t) * 0.85) var(--pc-spring) !important;
+    &::before, &::after {
+      opacity: 1 !important;
+      scale: 1 1;
+      transition: opacity 0.2s ease 0.08s, scale 0.5s var(--pc-spring) 0.08s !important;
     }
   }
 

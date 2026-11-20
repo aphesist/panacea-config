@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Three-finger swipe up/down changes the volume (like Windows), instead of
-closing the window (down) and toggling fullscreen (up).
+closing the window (down) and toggling fullscreen (up). v2: four-finger
+swipe down opens the island (Home), up closes it (instead of float).
 
 Hyprland can't remove a gesture defined elsewhere, so this patches Panacea's
 ~/.config/hypr/lua/input.lua. Each swipe is one press of the volume keys
@@ -12,14 +13,18 @@ re-run by panacea-gesture-patch.path after Panacea updates.
 import os, sys
 
 P = os.path.expanduser("~/.config/hypr/lua/input.lua")
-VERSION = "v1"
+VERSION = "v2"
 TAG = "-- panacea-local gesture patch "
 VOL = 'os.getenv("HOME") .. "/.local/bin/smart_volume.sh '
+PILL = '"qs -p " .. os.getenv("HOME") .. "/.config/panacea ipc call pill '
 REPL = [
     ('hl.gesture({ fingers = 3, direction = "down", action = "close" })\n',
      'hl.gesture({ fingers = 3, direction = "down", action = function() hl.exec_cmd(' + VOL + 'down") end })   ' + TAG + VERSION + ': volume down\n'),
     ('hl.gesture({ fingers = 3, direction = "up", action = "fullscreen" })\n',
      'hl.gesture({ fingers = 3, direction = "up", action = function() hl.exec_cmd(' + VOL + 'up") end })   ' + TAG + VERSION + ': volume up\n'),
+    ('hl.gesture({ fingers = 4, direction = "down", action = "float" })\n',
+     'hl.gesture({ fingers = 4, direction = "down", action = function() hl.exec_cmd(' + PILL + 'open") end })   ' + TAG + VERSION + ': open the island\n'
+     'hl.gesture({ fingers = 4, direction = "up", action = function() hl.exec_cmd(' + PILL + 'close") end })   ' + TAG + VERSION + ': close the island\n'),
 ]
 
 
