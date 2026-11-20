@@ -474,3 +474,257 @@
 /* while the island is the address bar, a loading page lights the island (panacea-dock.uc.js,
    in the site's colours) instead of Zen's progress pill */
 :root[panacea-solo] #zen-loading-progress-bar { display: none !important; }
+
+/* ---------------------------------------------------------------- compact mode: a side dock
+ * The floating sidebar as the island turned on its side: it grows out of Zen's left frame wall
+ * (the --zen-element-separation strip beside the page) in the frame's black (--p0), its left side
+ * one with the wall, concave curves above and below joining it to the wall the way the island's
+ * corners join the top edge, its right side round. No slide: it morphs out of the wall on a
+ * spring (a clip-path from a point at the wall to the whole shape, curves included), contents
+ * fading in after. Height follows the tabs (--panacea-sidebar-h, JS/panacea-sidebar.uc.js) up to
+ * 90% of the window, then the tabs scroll.
+ * #navigator-toolbox stays full height (Zen only reveals the sidebar while the pointer is within
+ * its height) but lets the pointer through: only a strip at the edge and the dock catch it. */
+:root[zen-compact-mode="true"]:not([customizing]):not([inDOMFullscreen="true"]) {
+  --pc-wall: var(--zen-element-separation, 8px);   /* the frame strip left of the page */
+  --pc-w: 52px;                                     /* the dock's width beyond the wall */
+  --pc-r: 24px;                                     /* its round right side */
+  --pc-f: 16px;                                     /* the curves into the wall */
+  --pc-spring: linear(0, 0.0325, 0.1118, 0.2160, 0.3298, 0.4428, 0.5485, 0.6431, 0.7250, 0.7938, 0.8501, 0.8950, 0.9300, 0.9565, 0.9760, 0.9899, 0.9993, 1.0054, 1.0089, 1.0107, 1.0111, 1.0107, 1.0098, 1.0087, 1.0074, 1.0061, 1.0050, 1.0039, 1.0030, 1.0023, 1.0016, 1.0011, 1.0008, 1.0005, 1.0003, 1.0001, 1);
+  --pc-t: 0.6s;
+  --pc-out: cubic-bezier(0.4, 0, 0.7, 0.2);
+
+  & #navigator-toolbox:not([animate="true"]) {
+    --zen-toolbox-max-width: calc(var(--pc-w) + var(--pc-wall)) !important;
+    background: transparent !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    translate: none !important;
+    transition: none !important;
+    pointer-events: none !important;
+    &::before {                                     /* the edge strip that wakes it */
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 8px;
+      pointer-events: auto;
+    }
+  }
+
+  /* the dock */
+  & #navigator-toolbox:not([animate="true"]) #titlebar {
+    flex: none !important;
+    height: var(--panacea-sidebar-h, min(calc(100% - 120px), 780px)) !important;
+    max-height: 90% !important;
+    margin-block: auto !important;
+    padding-inline: var(--pc-wall) 0 !important;    /* the contents sit beside the wall */
+    overflow: visible !important;
+    /* hidden: a point at the wall, mid-height */
+    clip-path: inset(calc(50% - 24px) 100% calc(50% - 24px) 0);
+    pointer-events: none;
+    transition: clip-path 0.24s var(--pc-out), height var(--pc-t) var(--pc-spring),
+                visibility 0s linear 0.24s !important;
+    & > :not(.zen-toolbar-background) {
+      opacity: 0;
+      transition: opacity 0.12s ease !important;
+    }
+  }
+  & #navigator-toolbox:is([zen-has-hover], [zen-user-show], [zen-has-empty-tab], [flash-popup],
+                          [has-popup-menu], [movingtab], [zen-compact-mode-active]):not([animate="true"]) #titlebar,
+  &[zen-renaming-tab="true"] #navigator-toolbox:not([animate="true"]) #titlebar {
+    /* shown: the whole shape, the curves above and below included */
+    clip-path: inset(calc(-1 * var(--pc-f)) 0 calc(-1 * var(--pc-f)) 0);
+    pointer-events: auto;
+    visibility: visible !important;
+    transition: clip-path var(--pc-t) var(--pc-spring), height var(--pc-t) var(--pc-spring),
+                visibility 0s !important;
+    & > :not(.zen-toolbar-background) {
+      opacity: 1;
+      transition: opacity 0.3s ease 0.12s !important;
+    }
+  }
+  & #navigator-toolbox:not([animate="true"]) #titlebar .zen-toolbar-background {
+    background: var(--p0) !important;
+    backdrop-filter: none !important;
+    border-radius: 0 var(--pc-r) var(--pc-r) 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    /* the curves: a quarter of the frame colour above and below, hollowed by a circle, so the
+       dock's straight top and bottom bend up and down into the wall */
+    &::before, &::after {
+      display: block !important;
+      content: "" !important;
+      position: absolute !important;
+      left: var(--pc-wall) !important;
+      width: var(--pc-f) !important;
+      height: var(--pc-f) !important;
+      outline: 0 !important;
+      border-radius: 0 !important;
+      inset-inline-end: auto !important;
+      corner-shape: round !important;
+    }
+    &::before {
+      top: calc(-1 * var(--pc-f)) !important;
+      bottom: auto !important;
+      background: radial-gradient(circle at 100% 0, transparent calc(var(--pc-f) - 0.5px), var(--p0) var(--pc-f)) !important;
+    }
+    &::after {
+      top: 100% !important;
+      bottom: auto !important;
+      background: radial-gradient(circle at 100% 100%, transparent calc(var(--pc-f) - 0.5px), var(--p0) var(--pc-f)) !important;
+    }
+  }
+
+  /* too many tabs: every box above the tab list may shrink, so the list scrolls inside the dock
+     instead of running under the buttons below it */
+  & #navigator-toolbox:not([animate="true"]) {
+    & #TabsToolbar, & #TabsToolbar > .toolbar-items, & #TabsToolbar-customization-target, & #tabbrowser-tabs {
+      min-height: 0 !important;
+    }
+    & #zen-tabs-wrapper {
+      flex: 1 1 0 !important;
+      height: auto !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
+      position: relative !important;     /* the Space's tab list (absolute, height 100%) measures and
+                                            clips against this box, not the whole tab column (which
+                                            also holds the logo): no overhang into the buttons, and
+                                            no scrolling unless the tabs really don't fit */
+    }
+    & #zen-sidebar-foot-buttons { flex: none !important; }
+    /* past 90%: a thin, faint scrollbar and a soft fade at the list's ends (no lines) */
+    & .workspace-arrowscrollbox::part(scrollbox) {
+      scrollbar-width: thin !important;
+      scrollbar-color: rgba(255, 255, 255, 0.16) transparent !important;
+    }
+    & .workspace-arrowscrollbox[overflowing] {
+      &::before, &::after { display: none !important; }
+      &::part(scrollbox) {
+        mask-image: linear-gradient(to bottom, transparent, black 14px, black calc(100% - 14px), transparent) !important;
+      }
+      &[scrolledtostart]::part(scrollbox) {
+        mask-image: linear-gradient(to bottom, black calc(100% - 14px), transparent) !important;
+      }
+      &[scrolledtoend]::part(scrollbox) {
+        mask-image: linear-gradient(to bottom, transparent, black 14px) !important;
+      }
+    }
+  }
+
+  /* three groups, always apart, however few tabs: pinned | open tabs | the buttons below. One
+     divider style: a short centred hairline with room on both sides. Zen hides the pinned/open
+     divider when a Space has no pinned tabs of its own; here it stays (Essentials are pinned too). */
+  & #navigator-toolbox:not([animate="true"]) {
+    & .zen-workspace-pinned-tabs-section .pinned-tabs-container-separator {
+      height: 21px !important;
+      opacity: 1 !important;
+      padding: 0 !important;
+      & toolbarseparator {
+        flex: none !important;                 /* it stretches across its row otherwise */
+        width: 22px !important;
+        min-width: 22px !important;
+        max-width: 22px !important;
+        height: 1px !important;
+        margin: auto !important;
+        border: 0 !important;
+        background: rgba(255, 255, 255, 0.13) !important;
+      }
+      & toolbarbutton { display: none !important; }
+    }
+    & #zen-sidebar-foot-buttons {
+      padding-top: 0 !important;
+      &::before {
+        content: "";
+        display: block;
+        order: -1;
+        flex: none;
+        width: 22px;
+        height: 1px;
+        margin: 6px auto 10px;
+        background: rgba(255, 255, 255, 0.13);
+      }
+    }
+  }
+
+  /* no Space indicator (the dim icon between the pinned tabs and the divider: the Spaces menu is
+     the dot at the bottom) unless it carries a picture (the Claude Space's pixel Claude: marked
+     panacea-keep-indicator by the JS), at full strength then; no "+" above the tabs (Ctrl+T) */
+  & #navigator-toolbox:not([animate="true"]) zen-workspace[panacea-keep-indicator] .zen-current-workspace-indicator {
+    opacity: 1 !important;
+  }
+  & #navigator-toolbox:not([animate="true"]) {
+    & zen-workspace:not([panacea-keep-indicator]) .zen-current-workspace-indicator,
+    & #vertical-tabs-newtab-button,
+    & #tabs-newtab-button {
+      display: none !important;
+    }
+  }
+
+  /* Zen's logo: inside the dock, at its top */
+  & #navigator-toolbox:not([animate="true"]) #panacea-zen-logo {
+    width: 24px !important;
+    height: 24px !important;
+    min-height: 24px !important;
+    margin: 10px auto 8px !important;
+    rotate: -120deg;
+    transition: rotate 0.24s var(--pc-out);
+  }
+  & #navigator-toolbox:is([zen-has-hover], [zen-user-show], [zen-has-empty-tab], [flash-popup],
+                          [has-popup-menu], [movingtab], [zen-compact-mode-active]):not([animate="true"]) #panacea-zen-logo {
+    rotate: 0deg;
+    transition: rotate 0.8s var(--pc-spring) 0.04s;
+  }
+}
+
+/* ---------------------------------------------------------------- tabs in the collapsed sidebar
+ * Pinned tabs (Essentials and a Space's pinned tabs) are bare icons, no tile. The selected tab has no box behind it: a short nub at the sidebar's edge in the
+ * site's own colour (--panacea-tab-color, from its icon: JS/panacea-sidebar.uc.js) marks it,
+ * growing in on a spring. */
+:root:not([zen-sidebar-expanded="true"]) {
+  & .tabbrowser-tab:is([pinned], [zen-essential]) > .tab-stack > .tab-background,
+  & .tabbrowser-tab[visuallyselected] > .tab-stack > .tab-background {
+    background: transparent !important;
+    box-shadow: none !important;
+    border-color: transparent !important;
+    &::before, &::after { display: none !important; }
+  }
+  & .tabbrowser-tab:hover > .tab-stack > .tab-background {
+    background: color-mix(in srgb, var(--p-fg) 7%, transparent) !important;
+  }
+  & .tabbrowser-tab > .tab-stack > .tab-content { position: relative !important; overflow: visible !important; }
+
+  /* selected: the nub at the pill's edge (the tab is centred in the pill) */
+  & .tabbrowser-tab > .tab-stack > .tab-content::after {
+    content: "";
+    position: absolute;
+    left: calc(50% - var(--pc-w, 52px) / 2 + 2px);
+    top: calc(50% - 7px);
+    width: 3px;
+    height: 14px;
+    border-radius: 2px;
+    background: var(--panacea-tab-color, var(--p-fg));
+    box-shadow: 0 0 8px color-mix(in srgb, var(--panacea-tab-color, var(--p-fg)) 55%, transparent);
+    scale: 1 0;
+    opacity: 0;
+    transition: scale 0.18s ease, opacity 0.18s ease, background-color 0.3s ease;
+  }
+  & .tabbrowser-tab[visuallyselected] > .tab-stack > .tab-content::after {
+    scale: 1 1;
+    opacity: 1;
+    transition: scale 0.55s var(--pc-spring, cubic-bezier(0.22, 1.2, 0.36, 1)), opacity 0.2s ease,
+                background-color 0.3s ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[zen-compact-mode="true"] #navigator-toolbox #titlebar,
+  :root[zen-compact-mode="true"] #navigator-toolbox #panacea-zen-logo,
+  .tabbrowser-tab > .tab-stack > .tab-content::after { transition-duration: 0s !important; rotate: 0deg !important; }
+}
