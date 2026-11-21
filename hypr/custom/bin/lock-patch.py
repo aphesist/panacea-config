@@ -12,6 +12,11 @@ v2 adds, on top of Panacea's stock lock:
   4. a fingerprint indicator at the bottom of the lock screen:
      listening (soft pulse) / unavailable (crossed out) /
      not recognized (red + shake) / recognized (green, then fade).
+v6: the whole face (wallpaper, clock, password pill, fingerprint) is drawn by
+LockFace.qml (next to this file) in the island kit's look; it is copied next to
+lock.qml and replaces Panacea's drawing. Presentation only: PAM, fingerprint and
+keyring logic above stay as they are. If LockFace.qml (or Panacea's DotText.qml)
+is missing, the v5 drawing is used instead.
 
 Keeps an unpatched copy (lock.qml.pristine) so older patch versions can be
 upgraded. Panacea updates overwrite lock.qml; this re-runs at every
@@ -23,7 +28,7 @@ import sys
 
 QML = os.path.expanduser("~/.config/panacea/lock.qml")
 PRISTINE = QML + ".pristine"
-VERSION = "v5"
+VERSION = "v6"
 TAG_PREFIX = "// panacea-local patch "
 TAG = TAG_PREFIX + VERSION
 
@@ -205,6 +210,40 @@ PATCHES = [
 
 
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+FACE_SRC = os.path.join(HERE, "LockFace.qml")
+FACE_DST = os.path.join(os.path.dirname(QML), "LockFace.qml")
+FACE_FROM = "                // ---------------------------------------------------- фон\n"
+FACE_TO = "                // ------------------------------------------------------- ввод\n"
+FACE_NEW = ("                " + TAG + ": the kit's lock face (LockFace.qml, copied by lock-patch)\n"
+            "                LockFace { anchors.fill: parent; lk: root }\n\n")
+
+
+def face_ready():
+    return os.path.exists(FACE_SRC) and os.path.exists(os.path.join(os.path.dirname(QML), "DotText.qml"))
+
+
+def install_face():
+    """Copy LockFace.qml next to lock.qml (rename, not in place: a running lock never reloads)."""
+    src = read(FACE_SRC)
+    try:
+        if read(FACE_DST) == src:
+            return
+    except OSError:
+        pass
+    write_atomic(FACE_DST, src)
+
+
+def swap_face(out):
+    if out.count(FACE_FROM) != 1 or out.count(FACE_TO) != 1:
+        return None
+    a = out.index(FACE_FROM)
+    b = out.index(FACE_TO)
+    if b <= a:
+        return None
+    return out[:a] + FACE_NEW + out[b:]
+
+
 def read(p):
     with open(p, encoding="utf-8") as f:
         return f.read()
@@ -224,6 +263,8 @@ def main() -> int:
         print(f"lock-patch: cannot read {QML}: {e}", file=sys.stderr)
         return 1
     if TAG in cur:
+        if face_ready():
+            install_face()
         return 0  # already at this version
 
     if TAG_PREFIX in cur:
@@ -236,13 +277,22 @@ def main() -> int:
     else:
         src = cur  # stock Panacea file (fresh install or after an update)
 
+    face = face_ready()
+    if face:
+        install_face()          # also refreshes it when only LockFace.qml changed
     out = src
-    for old, new in PATCHES:
+    for old, new in (PATCHES[:4] if face else PATCHES):
         if out.count(old) != 1:
             print("lock-patch: anchor not found (Panacea changed lock.qml?) "
                   "- leaving it untouched", file=sys.stderr)
             return 2
         out = out.replace(old, new, 1)
+
+    if face:
+        out = swap_face(out)
+        if out is None:
+            print("lock-patch: face anchors not found - leaving lock.qml untouched", file=sys.stderr)
+            return 2
 
     if TAG_PREFIX not in src:
         write_atomic(PRISTINE, src)
