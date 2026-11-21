@@ -55,6 +55,24 @@ else
     echo "  skipped: needs spicetify-cli and a writable /opt/spotify (see README)"
 fi
 
+say "mpv: Panacea look (uosc controls), video decoding on the Intel iGPU"
+put mpv/mpv.conf "$CFG/mpv/mpv.conf"
+put mpv/script-opts/uosc.conf "$CFG/mpv/script-opts/uosc.conf"
+put mpv/scripts/panacea-island.lua "$CFG/mpv/scripts/panacea-island.lua"   # the island drives mpv (socket per pid, no on-screen controls in a window)
+put environment.d/51-hwdec-intel.conf "$CFG/environment.d/51-hwdec-intel.conf"   # Qt video (island viewer) on VA-API: RTX stays asleep
+if [ ! -f "$CFG/mpv/scripts/uosc/main.lua" ]; then
+    t=$(mktemp -d)
+    if curl -fsSL --max-time 60 -o "$t/uosc.zip" https://github.com/tomasklaen/uosc/releases/latest/download/uosc.zip \
+       && unzip -q "$t/uosc.zip" -d "$t/x"; then
+        mkdir -p "$CFG/mpv/scripts" "$CFG/mpv/fonts"
+        cp -r "$t/x/scripts/uosc" "$CFG/mpv/scripts/"; cp "$t/x/fonts/"* "$CFG/mpv/fonts/"
+        rm -f "$CFG/mpv/scripts/uosc/bin/ziggy-darwin" "$CFG/mpv/scripts/uosc/bin/ziggy-windows.exe"
+    else echo "  skipped uosc (no download): mpv keeps its stock controls"; fi
+    rm -rf "$t"
+fi
+command -v mpv >/dev/null && for m in video/mp4 video/x-matroska video/webm video/quicktime video/x-msvideo video/x-m4v video/ogg video/mpeg; do
+    xdg-mime default mpv.desktop "$m"; done
+
 say "Zen Browser: Panacea dark theme and rounder web-content corners (userChrome.css)"
 ZEN="$CFG/zen"; ZP=""
 if [ -f "$ZEN/installs.ini" ]; then ZP="$(sed -n 's/^Default=//p' "$ZEN/installs.ini" | head -1)"; fi

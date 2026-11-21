@@ -143,7 +143,7 @@ Item {
         height: 52
         anchors.horizontalCenter: parent.horizontalCenter
         y: face.height / 2 + 64
-        opacity: face.auth ? 1 : 0
+        opacity: face.auth && face.fp !== "ok" ? 1 : 0     // a fingerprint unlock needs no box
         visible: opacity > 0.01
         Behavior on width { NumberAnimation { duration: 380; easing.type: Easing.OutCubic } }
         Behavior on opacity { NumberAnimation { duration: 260 } }
@@ -215,7 +215,7 @@ Item {
         y: field.y + field.height + 14
         text: face.bad ? face.lk.errorText : (face.lk ? face.lk.nick : "")
         color: face.bad ? face.accentText : face.muted
-        opacity: face.auth ? 1 : 0
+        opacity: face.auth && face.fp !== "ok" ? 1 : 0
         visible: opacity > 0.01
         font { family: face.font; pixelSize: face.tLabel }
         Behavior on opacity { NumberAnimation { duration: face.dSlow } }
