@@ -40,6 +40,11 @@ printf 'XDG_SESSION_TYPE=wayland\n' > "$CFG/environment.d/50-session-type.conf" 
 say "Spotify theme (Spicetify)"
 put spotify/spotify-flags.conf "$CFG/spotify-flags.conf"   # native Wayland: scales with the display
 put electron/vesktop-flags.conf "$CFG/vesktop-flags.conf"  # Discord (Vesktop), same reason
+# Vesktop shows up as Discord: name and icon (Papirus' discord.svg, into the local hicolor theme),
+# Discord tray and splash pictures (Vesktop's user assets)
+put electron/vesktop.desktop "$HOME/.local/share/applications/vesktop.desktop"
+[ -f /usr/share/icons/Papirus/64x64/apps/discord.svg ] && install -Dm644 /usr/share/icons/Papirus/64x64/apps/discord.svg "$HOME/.local/share/icons/hicolor/scalable/apps/discord.svg"
+for f in tray trayUnread splash; do put "electron/vesktop-assets/$f" "$CFG/vesktop/userAssets/$f"; done
 put electron/claude-desktop-flags.conf "$CFG/claude-desktop-flags.conf"  # Claude desktop: use GNOME Keyring on Hyprland
 # Vesktop on a tiling WM: no minimum window size (fits a half tile), no window buttons
 mkdir -p "$CFG/vesktop/settings"
